@@ -284,3 +284,11 @@ static inline void pm_autosleep_unlock(void) {}
 static inline suspend_state_t pm_autosleep_state(void) { return PM_SUSPEND_ON; }
 
 #endif /* !CONFIG_PM_AUTOSLEEP */
+
+#ifdef CONFIG_WAKELOCK
+/* kernel/power/wakelock.c */
+extern struct workqueue_struct *suspend_work_queue;
+extern struct wake_lock main_wake_lock;
+extern suspend_state_t requested_suspend_state;
+#endif
+
