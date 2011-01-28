@@ -28,4 +28,87 @@ int pwm_enable(struct pwm_device *pwm);
  */
 void pwm_disable(struct pwm_device *pwm);
 
+#ifdef CONFIG_PWM
+struct pwm_chip;
+
+enum {
+	PWMF_REQUESTED = 1 << 0,
+	PWMF_ENABLED = 1 << 1,
+};
+
+struct pwm_device {
+	const char		*label;
+	unsigned long		flags;
+	unsigned int		hwpwm;
+	unsigned int		pwm;
+	struct pwm_chip		*chip;
+	void			*chip_data;
+
+	unsigned int		period; /* in nanoseconds */
+};
+
+static inline void pwm_set_period(struct pwm_device *pwm, unsigned int period)
+{
+	if (pwm)
+		pwm->period = period;
+}
+
+static inline unsigned int pwm_get_period(struct pwm_device *pwm)
+{
+	return pwm ? pwm->period : 0;
+}
+
+/**
+ * struct pwm_ops - PWM controller operations
+ * @request: optional hook for requesting a PWM
+ * @free: optional hook for freeing a PWM
+ * @config: configure duty cycles and period length for this PWM
+ * @enable: enable PWM output toggling
+ * @disable: disable PWM output toggling
+ * @owner: helps prevent removal of modules exporting active PWMs
+ */
+struct pwm_ops {
+	int			(*request)(struct pwm_chip *chip,
+					   struct pwm_device *pwm);
+	void			(*free)(struct pwm_chip *chip,
+					struct pwm_device *pwm);
+	int			(*config)(struct pwm_chip *chip,
+					  struct pwm_device *pwm,
+					  int duty_ns, int period_ns);
+	int			(*enable)(struct pwm_chip *chip,
+					  struct pwm_device *pwm);
+	void			(*disable)(struct pwm_chip *chip,
+					   struct pwm_device *pwm);
+	struct module		*owner;
+};
+
+/**
+ * struct pwm_chip - abstract a PWM controller
+ * @dev: device providing the PWMs
+ * @list: list node for internal use
+ * @ops: callbacks for this PWM controller
+ * @base: number of first PWM controlled by this chip
+ * @npwm: number of PWMs controlled by this chip
+ * @pwms: array of PWM devices allocated by the framework
+ */
+struct pwm_chip {
+	struct device		*dev;
+	struct list_head	list;
+	const struct pwm_ops	*ops;
+	int			base;
+	unsigned int		npwm;
+
+	struct pwm_device	*pwms;
+};
+
+int pwm_set_chip_data(struct pwm_device *pwm, void *data);
+void *pwm_get_chip_data(struct pwm_device *pwm);
+
+int pwmchip_add(struct pwm_chip *chip);
+int pwmchip_remove(struct pwm_chip *chip);
+struct pwm_device *pwm_request_from_chip(struct pwm_chip *chip,
+					 unsigned int index,
+					 const char *label);
+#endif
+
 #endif /* __LINUX_PWM_H */
