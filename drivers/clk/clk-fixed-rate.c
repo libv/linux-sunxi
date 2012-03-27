@@ -34,7 +34,7 @@ static unsigned long clk_fixed_rate_recalc_rate(struct clk_hw *hw,
 }
 EXPORT_SYMBOL_GPL(clk_fixed_rate_recalc_rate);
 
-struct clk_ops clk_fixed_rate_ops = {
+const struct clk_ops clk_fixed_rate_ops = {
 	.recalc_rate = clk_fixed_rate_recalc_rate,
 };
 EXPORT_SYMBOL_GPL(clk_fixed_rate_ops);

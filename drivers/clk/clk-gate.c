@@ -101,7 +101,7 @@ static int clk_gate_is_enabled(struct clk_hw *hw)
 }
 EXPORT_SYMBOL_GPL(clk_gate_is_enabled);
 
-struct clk_ops clk_gate_ops = {
+const struct clk_ops clk_gate_ops = {
 	.enable = clk_gate_enable,
 	.disable = clk_gate_disable,
 	.is_enabled = clk_gate_is_enabled,

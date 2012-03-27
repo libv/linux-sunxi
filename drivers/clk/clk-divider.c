@@ -149,7 +149,7 @@ static int clk_divider_set_rate(struct clk_hw *hw, unsigned long rate)
 }
 EXPORT_SYMBOL_GPL(clk_divider_set_rate);
 
-struct clk_ops clk_divider_ops = {
+const struct clk_ops clk_divider_ops = {
 	.recalc_rate = clk_divider_recalc_rate,
 	.round_rate = clk_divider_round_rate,
 	.set_rate = clk_divider_set_rate,
