@@ -1,6 +1,7 @@
 #ifndef __ASMARM_ARCH_TIMER_H
 #define __ASMARM_ARCH_TIMER_H
 
+#include <asm/errno.h>
 #include <linux/ioport.h>
 
 struct arch_timer {
@@ -8,6 +9,7 @@ struct arch_timer {
 };
 
 #ifdef CONFIG_ARM_ARCH_TIMER
+#define ARCH_HAS_READ_CURRENT_TIMER
 int arch_timer_register(struct arch_timer *);
 int arch_timer_sched_clock_init(void);
 int arch_timer_of_register(void);
