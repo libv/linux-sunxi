@@ -37,30 +37,11 @@
 #include <net/netlink.h>
 #include <net/genetlink.h>
 
+#include "thermal_core.h"
+
 MODULE_AUTHOR("Zhang Rui");
 MODULE_DESCRIPTION("Generic thermal management sysfs support");
 MODULE_LICENSE("GPL");
-
-#define THERMAL_NO_TARGET -1UL
-/*
- * This structure is used to describe the behavior of
- * a certain cooling device on a certain trip point
- * in a certain thermal zone
- */
-struct thermal_instance {
-	int id;
-	char name[THERMAL_NAME_LENGTH];
-	struct thermal_zone_device *tz;
-	struct thermal_cooling_device *cdev;
-	int trip;
-	unsigned long upper;	/* Highest cooling state for this trip point */
-	unsigned long lower;	/* Lowest cooling state for this trip point */
-	unsigned long target;	/* expected cooling state */
-	char attr_name[THERMAL_NAME_LENGTH];
-	struct device_attribute attr;
-	struct list_head tz_node; /* node in tz->thermal_instances */
-	struct list_head cdev_node; /* node in cdev->thermal_instances */
-};
 
 static DEFINE_IDR(thermal_tz_idr);
 static DEFINE_IDR(thermal_cdev_idr);
@@ -100,6 +81,46 @@ static void release_idr(struct idr *idr, struct mutex *lock, int id)
 	if (lock)
 		mutex_unlock(lock);
 }
+
+int get_tz_trend(struct thermal_zone_device *tz, int trip)
+{
+	enum thermal_trend trend;
+
+	if (!tz->ops->get_trend || tz->ops->get_trend(tz, trip, &trend)) {
+		if (tz->temperature > tz->last_temperature)
+			trend = THERMAL_TREND_RAISING;
+		else if (tz->temperature < tz->last_temperature)
+			trend = THERMAL_TREND_DROPPING;
+		else
+			trend = THERMAL_TREND_STABLE;
+	}
+
+	return trend;
+}
+EXPORT_SYMBOL(get_tz_trend);
+
+struct thermal_instance *get_thermal_instance(struct thermal_zone_device *tz,
+			struct thermal_cooling_device *cdev, int trip)
+{
+	struct thermal_instance *pos = NULL;
+	struct thermal_instance *target_instance = NULL;
+
+	mutex_lock(&tz->lock);
+	mutex_lock(&cdev->lock);
+
+	list_for_each_entry(pos, &tz->thermal_instances, tz_node) {
+		if (pos->tz == tz && pos->trip == trip && pos->cdev == cdev) {
+			target_instance = pos;
+			break;
+		}
+	}
+
+	mutex_unlock(&cdev->lock);
+	mutex_unlock(&tz->lock);
+
+	return target_instance;
+}
+EXPORT_SYMBOL(get_thermal_instance);
 
 /* sys I/F for thermal zone */
 
@@ -1323,6 +1344,7 @@ static void remove_trip_attrs(struct thermal_zone_device *tz)
  * @mask:	a bit string indicating the writeablility of trip points
  * @devdata:	private device data
  * @ops:	standard thermal zone device callbacks
+ * @tzp:	thermal zone platform parameters
  * @passive_delay: number of milliseconds to wait between polls when
  *		   performing passive cooling
  * @polling_delay: number of milliseconds to wait between polls when checking
@@ -1335,6 +1357,7 @@ static void remove_trip_attrs(struct thermal_zone_device *tz)
 struct thermal_zone_device *thermal_zone_device_register(const char *type,
 	int trips, int mask, void *devdata,
 	const struct thermal_zone_device_ops *ops,
+	const struct thermal_zone_params *tzp,
 	int passive_delay, int polling_delay)
 {
 	struct thermal_zone_device *tz;
@@ -1368,6 +1391,7 @@ struct thermal_zone_device *thermal_zone_device_register(const char *type,
 
 	strcpy(tz->type, type ? : "");
 	tz->ops = ops;
+	tz->tzp = tzp;
 	tz->device.class = &thermal_class;
 	tz->devdata = devdata;
 	tz->trips = trips;
