@@ -47,3 +47,9 @@ config RCAR_THERMAL
 	help
 	  Enable this to plug the R-Car thermal sensor driver into the Linux
 	  thermal framework
+
+config FAIR_SHARE
+	bool "Fair-share thermal governor"
+	depends on THERMAL
+	help
+	  Enable this to manage platform thermals using fair-share governor.
