@@ -9,6 +9,7 @@
  * License terms: GNU General Public License (GPL) version 2
  */
 
+#include <linux/kref.h>
 #include <linux/mutex.h>
 #include <linux/radix-tree.h>
 #include <linux/pinctrl/pinconf.h>
@@ -52,12 +53,14 @@ struct pinctrl_dev {
  * @dev: the device using this pin control handle
  * @states: a list of states for this device
  * @state: the current state
+ * @users: reference count
  */
 struct pinctrl {
 	struct list_head node;
 	struct device *dev;
 	struct list_head states;
 	struct pinctrl_state *state;
+	struct kref users;
 };
 
 /**

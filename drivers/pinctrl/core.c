@@ -14,6 +14,7 @@
 #define pr_fmt(fmt) "pinctrl core: " fmt
 
 #include <linux/kernel.h>
+#include <linux/kref.h>
 #include <linux/export.h>
 #include <linux/init.h>
 #include <linux/device.h>
@@ -713,13 +714,24 @@ static void pinctrl_put_locked(struct pinctrl *p, bool inlist)
 }
 
 /**
- * pinctrl_put() - release a previously claimed pinctrl handle
+ * pinctrl_release() - release the pinctrl handle
+ * @kref: the kref in the pinctrl being released
+ */
+void pinctrl_release(struct kref *kref)
+{
+	struct pinctrl *p = container_of(kref, struct pinctrl, users);
+
+	pinctrl_put_locked(p, true);
+}
+
+/**
+ * pinctrl_put() - decrease use count on a previously claimed pinctrl handle
  * @p: the pinctrl handle to release
  */
 void pinctrl_put(struct pinctrl *p)
 {
 	mutex_lock(&pinctrl_mutex);
-	pinctrl_put_locked(p, true);
+	kref_put(&p->users, pinctrl_release);
 	mutex_unlock(&pinctrl_mutex);
 }
 EXPORT_SYMBOL_GPL(pinctrl_put);
