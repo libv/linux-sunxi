@@ -214,7 +214,8 @@ static void __blk_queue_bounce(struct request_queue *q, struct bio **bio_orig,
 		if (rw == WRITE) {
 			char *vto, *vfrom;
 
-			flush_dcache_page(from->bv_page);
+			if (unlikely(!PageSlab(from->bv_page)))
+				flush_dcache_page(from->bv_page);
 			vto = page_address(to->bv_page) + to->bv_offset;
 			vfrom = kmap(from->bv_page) + from->bv_offset;
 			memcpy(vto, vfrom, to->bv_len);
