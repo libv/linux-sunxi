@@ -24,7 +24,6 @@
 #include <linux/sysfs.h>
 #include <linux/debugfs.h>
 #include <linux/seq_file.h>
-#include <linux/pinctrl/consumer.h>
 #include <linux/pinctrl/pinctrl.h>
 #include <linux/pinctrl/machine.h>
 #include "core.h"
@@ -43,6 +42,7 @@ static LIST_HEAD(pinctrl_list);
 
 /* List of pinctrl maps (struct pinctrl_maps) */
 LIST_HEAD(pinctrl_maps);
+
 
 
 const char *pinctrl_dev_get_name(struct pinctrl_dev *pctldev)
@@ -305,8 +305,7 @@ void pinctrl_add_gpio_range(struct pinctrl_dev *pctldev,
 	mutex_unlock(&pinctrl_mutex);
 }
 EXPORT_SYMBOL_GPL(pinctrl_add_gpio_range);
-
-struct pinctrl_dev *find_pinctrl_and_add_gpio_range(const char *devname,
+struct pinctrl_dev *pinctrl_find_and_add_gpio_range(const char *devname,
 		struct pinctrl_gpio_range *range)
 {
 	struct pinctrl_dev *pctldev = get_pinctrl_dev_from_devname(devname);
@@ -882,7 +881,6 @@ void devm_pinctrl_put(struct pinctrl *p)
 	pinctrl_put(p);
 }
 EXPORT_SYMBOL_GPL(devm_pinctrl_put);
-
 /**
  * pinctrl_register_mappings() - register a set of pin controller mappings
  * @maps: the pincontrol mappings table to register. This should probably be
@@ -1012,7 +1010,6 @@ static int pinctrl_groups_show(struct seq_file *s, void *what)
 		const unsigned *pins;
 		unsigned num_pins;
 		const char *gname = ops->get_group_name(pctldev, selector);
-		const char *pname;
 		int ret;
 		int i;
 
@@ -1022,16 +1019,10 @@ static int pinctrl_groups_show(struct seq_file *s, void *what)
 			seq_printf(s, "%s [ERROR GETTING PINS]\n",
 				   gname);
 		else {
-			seq_printf(s, "group: %s\n", gname);
-			for (i = 0; i < num_pins; i++) {
-				pname = pin_get_name(pctldev, pins[i]);
-				if (WARN_ON(!pname)) {
-					mutex_unlock(&pinctrl_mutex);
-					return -EINVAL;
-				}
-				seq_printf(s, "pin %d (%s)\n", pins[i], pname);
-			}
-			seq_puts(s, "\n");
+			seq_printf(s, "group: %s, pins = [ ", gname);
+			for (i = 0; i < num_pins; i++)
+				seq_printf(s, "%d ", pins[i]);
+			seq_puts(s, "]\n");
 		}
 		selector++;
 	}
@@ -1441,7 +1432,6 @@ EXPORT_SYMBOL_GPL(pinctrl_register);
  */
 void pinctrl_unregister(struct pinctrl_dev *pctldev)
 {
-	struct pinctrl_gpio_range *range, *n;
 	if (pctldev == NULL)
 		return;
 
@@ -1457,10 +1447,6 @@ void pinctrl_unregister(struct pinctrl_dev *pctldev)
 	/* Destroy descriptor tree */
 	pinctrl_free_pindescs(pctldev, pctldev->desc->pins,
 			      pctldev->desc->npins);
-	/* remove gpio ranges map */
-	list_for_each_entry_safe(range, n, &pctldev->gpio_ranges, node)
-		list_del(&range->node);
-
 	kfree(pctldev);
 
 	mutex_unlock(&pinctrl_mutex);

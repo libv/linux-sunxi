@@ -299,5 +299,4 @@ gpiochip_remove_pin_ranges(struct gpio_chip *chip)
 }
 
 #endif /* CONFIG_PINCTRL */
-
 #endif /* _ASM_GENERIC_GPIO_H */

@@ -9,7 +9,6 @@ config ARCH_HAVE_CUSTOM_GPIO_H
 	  the architecture to provide a custom asm/gpio.h implementation
 	  overriding the default implementations.  New uses of this are
 	  strongly discouraged.
-
 config ARCH_WANT_OPTIONAL_GPIOLIB
 	bool
 	help

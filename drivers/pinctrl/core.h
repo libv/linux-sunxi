@@ -31,6 +31,8 @@ struct pinctrl_gpio_range;
  * @driver_data: driver data for drivers registering to the pin controller
  *	subsystem
  * @p: result of pinctrl_get() for this device
+ * @hog_default: default state for pins hogged by this device
+ * @hog_sleep: sleep state for pins hogged by this device
  * @device_root: debugfs root for this device
  */
 struct pinctrl_dev {
@@ -42,6 +44,8 @@ struct pinctrl_dev {
 	struct module *owner;
 	void *driver_data;
 	struct pinctrl *p;
+	struct pinctrl_state *hog_default;
+	struct pinctrl_state *hog_sleep;
 #ifdef CONFIG_DEBUG_FS
 	struct dentry *device_root;
 #endif
@@ -156,7 +160,6 @@ struct pinctrl_maps {
 	struct pinctrl_map const *maps;
 	unsigned num_maps;
 };
-
 struct pinctrl_dev *get_pinctrl_dev_from_devname(const char *dev_name);
 int pin_get_from_name(struct pinctrl_dev *pctldev, const char *name);
 const char *pin_get_name(struct pinctrl_dev *pctldev, const unsigned pin);
@@ -170,9 +173,7 @@ static inline struct pin_desc *pin_desc_get(struct pinctrl_dev *pctldev,
 }
 
 extern struct mutex pinctrl_mutex;
-extern struct list_head pinctrldev_list;
 extern struct list_head pinctrl_maps;
-
 #define for_each_maps(_maps_node_, _i_, _map_) \
 	list_for_each_entry(_maps_node_, &pinctrl_maps, node) \
 		for (_i_ = 0, _map_ = &_maps_node_->maps[_i_]; \

@@ -1082,7 +1082,6 @@ int gpiochip_add(struct gpio_chip *chip)
 				: 0;
 		}
 	}
-
 #ifdef CONFIG_PINCTRL
 	INIT_LIST_HEAD(&chip->pin_ranges);
 #endif
@@ -1255,7 +1254,6 @@ void gpiochip_remove_pin_ranges(struct gpio_chip *chip)
 EXPORT_SYMBOL_GPL(gpiochip_remove_pin_ranges);
 
 #endif /* CONFIG_PINCTRL */
-
 /* These "optional" allocation calls help prevent drivers from stomping
  * on each other, and help provide better diagnostics in debugfs.
  * They're called even less than the "set direction" calls.
