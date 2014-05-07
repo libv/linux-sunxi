@@ -1113,15 +1113,10 @@ static struct pinctrl_desc u300_pmx_desc = {
 	.owner = THIS_MODULE,
 };
 
-static int __devinit u300_pmx_probe(struct platform_device *pdev)
+static int u300_pmx_probe(struct platform_device *pdev)
 {
 	struct u300_pmx *upmx;
 	struct resource *res;
-	struct gpio_chip *gpio_chip = dev_get_platdata(&pdev->dev);
-	int ret;
-	int i;
-
-	pr_err("U300 PMX PROBE\n");
 
 	/* Create state holders etc for this driver */
 	upmx = devm_kzalloc(&pdev->dev, sizeof(*upmx), GFP_KERNEL);
@@ -1131,36 +1126,17 @@ static int __devinit u300_pmx_probe(struct platform_device *pdev)
 	upmx->dev = &pdev->dev;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!res) {
-		ret = -ENOENT;
-		goto out_no_resource;
-	}
-	upmx->phybase = res->start;
-	upmx->physize = resource_size(res);
+	if (!res)
+		return -ENOENT;
 
-	if (request_mem_region(upmx->phybase, upmx->physize,
-			       DRIVER_NAME) == NULL) {
-		ret = -ENOMEM;
-		goto out_no_memregion;
-	}
-
-	upmx->virtbase = ioremap(upmx->phybase, upmx->physize);
-	if (!upmx->virtbase) {
-		ret = -ENOMEM;
-		goto out_no_remap;
-	}
+	upmx->virtbase = devm_ioremap_resource(&pdev->dev, res);
+	if (IS_ERR(upmx->virtbase))
+		return PTR_ERR(upmx->virtbase);
 
 	upmx->pctl = pinctrl_register(&u300_pmx_desc, &pdev->dev, upmx);
 	if (!upmx->pctl) {
 		dev_err(&pdev->dev, "could not register U300 pinmux driver\n");
-		ret = -EINVAL;
-		goto out_no_pmx;
-	}
-
-	/* We will handle a range of GPIO pins */
-	for (i = 0; i < ARRAY_SIZE(u300_gpio_ranges); i++) {
-		u300_gpio_ranges[i].gc = gpio_chip;
-		pinctrl_add_gpio_range(upmx->pctl, &u300_gpio_ranges[i]);
+		return -EINVAL;
 	}
 
 	platform_set_drvdata(pdev, upmx);
@@ -1168,30 +1144,14 @@ static int __devinit u300_pmx_probe(struct platform_device *pdev)
 	dev_info(&pdev->dev, "initialized U300 pin control driver\n");
 
 	return 0;
-
-out_no_pmx:
-	iounmap(upmx->virtbase);
-out_no_remap:
-	platform_set_drvdata(pdev, NULL);
-out_no_memregion:
-	release_mem_region(upmx->phybase, upmx->physize);
-out_no_resource:
-	devm_kfree(&pdev->dev, upmx);
-	return ret;
 }
 
-static int __devexit u300_pmx_remove(struct platform_device *pdev)
+static int u300_pmx_remove(struct platform_device *pdev)
 {
 	struct u300_pmx *upmx = platform_get_drvdata(pdev);
-	int i;
 
-	for (i = 0; i < ARRAY_SIZE(u300_gpio_ranges); i++)
-		pinctrl_remove_gpio_range(upmx->pctl, &u300_gpio_ranges[i]);
 	pinctrl_unregister(upmx->pctl);
-	iounmap(upmx->virtbase);
-	release_mem_region(upmx->phybase, upmx->physize);
 	platform_set_drvdata(pdev, NULL);
-	devm_kfree(&pdev->dev, upmx);
 
 	return 0;
 }
@@ -1202,7 +1162,7 @@ static struct platform_driver u300_pmx_driver = {
 		.owner = THIS_MODULE,
 	},
 	.probe = u300_pmx_probe,
-	.remove = __devexit_p(u300_pmx_remove),
+	.remove = u300_pmx_remove,
 };
 
 static int __init u300_pmx_init(void)

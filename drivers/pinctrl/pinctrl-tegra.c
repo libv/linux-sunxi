@@ -243,6 +243,12 @@ static int tegra_pinconf_reg(struct tegra_pmx *pmx,
 		*bit = g->ioreset_bit;
 		*width = 1;
 		break;
+	case TEGRA_PINCONF_PARAM_RCV_SEL:
+		*bank = g->rcv_sel_bank;
+		*reg = g->rcv_sel_reg;
+		*bit = g->rcv_sel_bit;
+		*width = 1;
+		break;
 	case TEGRA_PINCONF_PARAM_HIGH_SPEED_MODE:
 		*bank = g->drv_bank;
 		*reg = g->drv_reg;
@@ -284,6 +290,12 @@ static int tegra_pinconf_reg(struct tegra_pmx *pmx,
 		*reg = g->drv_reg;
 		*bit = g->slwr_bit;
 		*width = g->slwr_width;
+		break;
+	case TEGRA_PINCONF_PARAM_DRIVE_TYPE:
+		*bank = g->drvtype_bank;
+		*reg = g->drvtype_reg;
+		*bit = g->drvtype_bit;
+		*width = 2;
 		break;
 	default:
 		dev_err(pmx->dev, "Invalid config param %04x\n", param);
