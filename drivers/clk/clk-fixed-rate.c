@@ -34,19 +34,11 @@ static unsigned long clk_fixed_rate_recalc_rate(struct clk_hw *hw,
 }
 EXPORT_SYMBOL_GPL(clk_fixed_rate_recalc_rate);
 
-const struct clk_ops clk_fixed_rate_ops = {
+struct clk_ops clk_fixed_rate_ops = {
 	.recalc_rate = clk_fixed_rate_recalc_rate,
 };
 EXPORT_SYMBOL_GPL(clk_fixed_rate_ops);
 
-/**
- * clk_register_fixed_rate - register fixed-rate clock with the clock framework
- * @dev: device that is registering this clock
- * @name: name of this clock
- * @parent_name: name of clock's parent
- * @flags: framework-specific flags
- * @fixed_rate: non-adjustable clock rate
- */
 struct clk *clk_register_fixed_rate(struct device *dev, const char *name,
 		const char *parent_name, unsigned long flags,
 		unsigned long fixed_rate)
@@ -67,7 +59,6 @@ struct clk *clk_register_fixed_rate(struct device *dev, const char *name,
 	init.flags = flags | CLK_IS_BASIC;
 	init.parent_names = (parent_name ? &parent_name: NULL);
 	init.num_parents = (parent_name ? 1 : 0);
-
 	/* struct clk_fixed_rate assignments */
 	fixed->fixed_rate = fixed_rate;
 	fixed->hw.init = &init;
@@ -79,4 +70,5 @@ struct clk *clk_register_fixed_rate(struct device *dev, const char *name,
 		kfree(fixed);
 
 	return clk;
+
 }

@@ -233,7 +233,8 @@ void ion_buffer_destroy(struct ion_buffer *buffer)
 		buffer->heap->ops->unmap_kernel(buffer->heap, buffer);
 	buffer->heap->ops->unmap_dma(buffer->heap, buffer);
 	buffer->heap->ops->free(buffer);
-	if (buffer->flags & ION_FLAG_CACHED)
+	//if (buffer->flags & ION_FLAG_CACHED)
+	if(ion_buffer_fault_user_mappings(buffer)) /* liugang */
 		kfree(buffer->dirty);
 	kfree(buffer);
 }
@@ -412,8 +413,6 @@ struct ion_handle *ion_alloc(struct ion_client *client, size_t len,
 	struct ion_buffer *buffer = NULL;
 	struct ion_heap *heap;
 
-	pr_debug("%s: len %d align %d heap_id_mask %u flags %x\n", __func__,
-		 len, align, heap_id_mask, flags);
 	/*
 	 * traverse the list of heaps available in this system in priority
 	 * order.  If the heap type is supported by the client, and matches the
@@ -1172,6 +1171,305 @@ static long ion_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	return 0;
 }
 
+#ifdef CONFIG_ION_SUNXI
+#include <linux/ion_sunxi.h>
+#include <linux/dmaengine.h>
+#include <linux/dma/sunxi-dma.h>
+
+void __flush_cache_before_dma(dma_buf_group *pbuf_group)
+{
+	long start, end;
+	int i;
+
+	for(i = 0; i < pbuf_group->cnt; i++) {
+		start = pbuf_group->item[i].dst_va;
+		end = start + pbuf_group->item[i].size;
+		flush_user_range(start, end);
+		//flush_clean_user_range(start, end);
+	}
+}
+
+#define MAX_CHANNEL 6
+
+typedef struct {
+	struct dma_chan *chan;      /* dma channel handle */
+	wait_queue_head_t dma_wq;   /* wait dma transfer done */
+	atomic_t	dma_done;   /* dma done flag, used with dma_wq */
+}chan_info;
+
+static void __dma_callback(void *dma_async_param)
+{
+	chan_info *pinfo = (chan_info *)dma_async_param;
+
+	wake_up_interruptible(&pinfo->dma_wq);
+	atomic_set(&pinfo->dma_done, 1);
+}
+
+int __multi_dma_copy(dma_buf_group *pbuf_group)
+{
+	struct dma_async_tx_descriptor *tx = NULL;
+	struct dma_slave_config config;
+	chan_info dma_chanl[MAX_CHANNEL], *pchan_info;
+	int buf_left, cur_trans, start_index;
+	int i, ret = -EINVAL, chan_cnt = 0;
+	long timeout = 5 * HZ;
+	dma_buf_item *pitem;
+	dma_cap_mask_t mask;
+	dma_cookie_t cookie;
+
+	/* split buf if buf cnt <=3 */
+	if(pbuf_group->cnt <= 3) {
+		for(i = 0; i < pbuf_group->cnt; i++) {
+			pitem = &pbuf_group->item[i];
+			if(pitem->size >= SZ_1M) {
+				memmove(&pitem[1], pitem, (pbuf_group->cnt - i)*sizeof(*pitem));
+
+				pitem->size >>= 1;
+				pitem[1].src_va = pitem->src_va + pitem->size;
+				pitem[1].src_pa = pitem->src_pa + pitem->size;
+				pitem[1].dst_va = pitem->dst_va + pitem->size;
+				pitem[1].dst_pa = pitem->dst_pa + pitem->size;
+				pitem[1].size = pitem->size;
+				pbuf_group->cnt++;
+				break;
+			}
+		}
+	}
+
+	/* request channel */
+	dma_cap_zero(mask);
+	dma_cap_set(DMA_MEMCPY, mask);
+	for(i = 0; i < ARRAY_SIZE(dma_chanl); i++, chan_cnt++) {
+		if(chan_cnt == pbuf_group->cnt) /* channel enough */
+			break;
+		pchan_info = &dma_chanl[i];
+		pchan_info->chan = dma_request_channel(mask , NULL , NULL);
+		if(!pchan_info->chan)
+			break;
+		init_waitqueue_head(&pchan_info->dma_wq);
+		atomic_set(&pchan_info->dma_done, 0);
+	}
+
+	buf_left = pbuf_group->cnt;
+again:
+	start_index = pbuf_group->cnt - buf_left;
+	for(i = 0; i < chan_cnt; ) {
+		pchan_info = &dma_chanl[i];
+		config.direction = DMA_MEM_TO_MEM;
+		config.src_addr = 0; /* not used for memcpy */
+		config.dst_addr = 0;
+		config.src_addr_width = DMA_SLAVE_BUSWIDTH_4_BYTES;
+		config.dst_addr_width = DMA_SLAVE_BUSWIDTH_4_BYTES;
+		config.src_maxburst = 8;
+		config.dst_maxburst = 8;
+		config.slave_id = sunxi_slave_id(DRQDST_SDRAM, DRQSRC_SDRAM);
+		dmaengine_slave_config(pchan_info->chan, &config);
+
+		tx = pchan_info->chan->device->device_prep_dma_memcpy(pchan_info->chan,
+			pbuf_group->item[start_index + i].dst_pa,
+			pbuf_group->item[start_index + i].src_pa,
+			pbuf_group->item[start_index + i].size,
+			DMA_PREP_INTERRUPT | DMA_CTRL_ACK);
+
+		tx->callback = __dma_callback;
+		tx->callback_param = pchan_info;
+
+		cookie = dmaengine_submit(tx);
+
+		if(++i == buf_left)
+			break;
+	}
+	cur_trans = i;
+
+	/* start dma */
+	for(i = 0; i < cur_trans; i++)
+		dma_async_issue_pending(dma_chanl[i].chan);
+
+	for(i = 0; i < cur_trans; i++) {
+		ret = wait_event_interruptible_timeout(dma_chanl[i].dma_wq, atomic_read(&dma_chanl[i].dma_done)==1, timeout);
+		if(unlikely(-ERESTARTSYS == ret || 0 == ret)) {
+			pr_err("%s(%d) err: wait dma done failed!\n", __func__, __LINE__);
+			ret = -EIO;
+			goto end;
+		}
+	}
+
+	buf_left -= cur_trans;
+	if(buf_left)
+		goto again;
+
+	ret = 0;
+end:
+	for(i = 0; i < chan_cnt; i++)
+		dma_release_channel(dma_chanl[i].chan);
+	return ret;
+}
+
+int __signle_dma_copy(dma_buf_group *pbuf_group)
+{
+	struct sg_table src_sg_table, dst_sg_table;
+	struct dma_async_tx_descriptor *tx = NULL;
+	struct dma_slave_config config;
+	struct dma_chan *chan;
+	struct scatterlist *sg;
+	long timeout = 5 * HZ;
+	chan_info dma_info;
+	dma_cap_mask_t mask;
+	dma_cookie_t cookie;
+	int i, ret = -EINVAL;
+
+	dma_cap_zero(mask);
+	dma_cap_set(DMA_SG, mask); /* to check... */
+	dma_cap_set(DMA_MEMCPY, mask);
+	chan = dma_request_channel(mask , NULL , NULL);
+	if(!chan) {
+		pr_err("%s(%d) err: dma_request_channel failed!\n", __func__, __LINE__);
+		return -EBUSY;
+	}
+
+	if(sg_alloc_table(&src_sg_table, pbuf_group->cnt, GFP_KERNEL)) {
+		pr_err("%s(%d) err: alloc src sg_table failed!\n", __func__, __LINE__);
+		return -ENOMEM;
+	}
+	if(sg_alloc_table(&dst_sg_table, pbuf_group->cnt, GFP_KERNEL)) {
+		sg_free_table(&src_sg_table);
+		pr_err("%s(%d) err: alloc dst sg_table failed!\n", __func__, __LINE__);
+		return -ENOMEM;
+	}
+
+	/* assign sg buf */
+	sg = src_sg_table.sgl;
+	for(i = 0; i < pbuf_group->cnt; i++, sg = sg_next(sg)) {
+		sg_set_buf(sg, phys_to_virt(pbuf_group->item[i].src_pa), pbuf_group->item[i].size);
+		sg_dma_address(sg) = pbuf_group->item[i].src_pa;
+	}
+	sg = dst_sg_table.sgl;
+	for(i = 0; i < pbuf_group->cnt; i++, sg = sg_next(sg)) {
+		sg_set_buf(sg, phys_to_virt(pbuf_group->item[i].dst_pa), pbuf_group->item[i].size);
+		sg_dma_address(sg) = pbuf_group->item[i].dst_pa;
+	}
+
+	config.direction = DMA_MEM_TO_MEM;
+	config.src_addr = 0; /* not used for memcpy */
+	config.dst_addr = 0;
+	config.src_addr_width = DMA_SLAVE_BUSWIDTH_4_BYTES;
+	config.dst_addr_width = DMA_SLAVE_BUSWIDTH_4_BYTES;
+	config.src_maxburst = 8;
+	config.dst_maxburst = 8;
+	config.slave_id = sunxi_slave_id(DRQDST_SDRAM, DRQSRC_SDRAM);
+	dmaengine_slave_config(chan , &config);
+
+	tx = chan->device->device_prep_dma_sg(chan, dst_sg_table.sgl, pbuf_group->cnt,
+		src_sg_table.sgl, pbuf_group->cnt, DMA_PREP_INTERRUPT | DMA_CTRL_ACK);
+
+	/* set callback */
+	dma_info.chan = chan;
+	init_waitqueue_head(&dma_info.dma_wq);
+	atomic_set(&dma_info.dma_done, 0);
+	tx->callback = __dma_callback;
+	tx->callback_param = &dma_info;
+
+	/* enqueue */
+	cookie = dmaengine_submit(tx);
+	/* start dma */
+	dma_async_issue_pending(chan);
+
+	/* wait transfer over */
+	ret = wait_event_interruptible_timeout(dma_info.dma_wq, atomic_read(&dma_info.dma_done)==1, timeout);
+	if(unlikely(-ERESTARTSYS == ret || 0 == ret)) {
+		pr_err("%s(%d) err: wait dma done failed!\n", __func__, __LINE__);
+		goto end;
+	}
+
+	ret = 0;
+end:
+	sg_free_table(&src_sg_table);
+	sg_free_table(&dst_sg_table);
+	dma_release_channel(chan);
+	return ret;
+}
+
+int dma_copy_buf(dma_buf_group *pbuf_group)
+{
+	if(unlikely(!pbuf_group || !pbuf_group->cnt))
+		return -EINVAL;
+
+	if(pbuf_group->multi_dma)
+		return __multi_dma_copy(pbuf_group);
+	else
+		return __signle_dma_copy(pbuf_group);
+}
+
+long sunxi_ion_ioctl(struct ion_client *client, unsigned int cmd, unsigned long arg)
+{
+	long ret = 0;
+
+	switch(cmd) {
+	case ION_IOC_SUNXI_FLUSH_RANGE:
+	{
+		sunxi_cache_range range;
+		if(copy_from_user(&range, (u32 *)arg, sizeof(range))) {
+			ret = -EINVAL;
+			goto end;
+		}
+		if(flush_clean_user_range(range.start, range.end)) {
+			ret = -EINVAL;
+			goto end;
+		}
+		break;
+	}
+	case ION_IOC_SUNXI_FLUSH_ALL:
+		flush_dcache_all();
+		break;
+	case ION_IOC_SUNXI_PHYS_ADDR:
+	{
+		sunxi_phys_data data;
+		bool valid;
+
+		if(copy_from_user(&data, (void __user *)arg, sizeof(sunxi_phys_data)))
+			return -EFAULT;
+		mutex_lock(&client->lock);
+		valid = ion_handle_validate(client, data.handle);
+		mutex_unlock(&client->lock);
+		if(!valid)
+			return -EINVAL;
+		ret = ion_phys(client, data.handle, (ion_phys_addr_t *)&data.phys_addr, (size_t *)&data.size);
+		if(ret)
+			return -EINVAL;
+		if(copy_to_user((void __user *)arg, &data, sizeof(data)))
+			return -EFAULT;
+		break;
+	}
+	case ION_IOC_SUNXI_DMA_COPY:
+	{
+		dma_buf_group buf_group;
+
+		ret = -EINVAL;
+		if(copy_from_user(&buf_group, (u32 *)arg, sizeof(buf_group))) {
+			pr_err("%s(%d) err: copy_from_user err\n", __func__, __LINE__);
+			goto end;
+		}
+		if(buf_group.cnt > DMA_BUF_MAXCNT) {
+			pr_err("%s(%d) err: buf cnt %d exceed %d\n", __func__, __LINE__,
+				buf_group.cnt, DMA_BUF_MAXCNT);
+			goto end;
+		}
+
+		__flush_cache_before_dma(&buf_group);
+		ret = (long)dma_copy_buf(&buf_group);
+		break;
+	}
+	case ION_IOC_SUNXI_DUMP:
+		sunxi_ion_dump_mem();
+		break;
+	default:
+		return -ENOTTY;
+	}
+end:
+	return ret;
+}
+#endif
+
 static int ion_release(struct inode *inode, struct file *file)
 {
 	struct ion_client *client = file->private_data;
@@ -1341,9 +1639,14 @@ void ion_device_add_heap(struct ion_device *dev, struct ion_heap *heap)
 
 	heap->dev = dev;
 	down_write(&dev->lock);
+#if 0
 	/* use negative heap->id to reverse the priority -- when traversing
 	   the list later attempt higher id numbers first */
 	plist_node_init(&heap->node, -heap->id);
+#else
+	/* we need attempt lower heap->id first when alloc, so donot negative here */
+	plist_node_init(&heap->node, heap->id);
+#endif
 	plist_add(&heap->node, &dev->heaps);
 	debugfs_create_file(heap->name, 0664, dev->debug_root, heap,
 			    &debug_heap_fops);

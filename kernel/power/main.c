@@ -276,7 +276,7 @@ static suspend_state_t decode_state(const char *buf, size_t n)
 	suspend_state_t state = PM_SUSPEND_ON;
 #else
 	suspend_state_t state = PM_SUSPEND_STANDBY;
-#endif
+#endif	
 	const char * const *s;
 #endif
 	char *p;
@@ -527,6 +527,12 @@ power_attr(wake_lock);
 power_attr(wake_unlock);
 #endif
 
+#ifdef CONFIG_USER_SCENELOCK
+power_attr(scene_lock);
+power_attr(scene_unlock);
+power_attr(scene_state);
+#endif
+
 static struct attribute * g[] = {
 	&state_attr.attr,
 #ifdef CONFIG_PM_TRACE
@@ -542,6 +548,11 @@ static struct attribute * g[] = {
 #ifdef CONFIG_USER_WAKELOCK
 	&wake_lock_attr.attr,
 	&wake_unlock_attr.attr,
+#endif
+#ifdef CONFIG_USER_SCENELOCK
+	&scene_lock_attr.attr,
+	&scene_unlock_attr.attr,
+	&scene_state_attr.attr,
 #endif
 #ifdef CONFIG_PM_DEBUG
 	&pm_test_attr.attr,

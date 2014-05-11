@@ -312,6 +312,21 @@ ssize_t  wake_unlock_store(struct kobject *kobj, struct kobj_attribute *attr,
 			const char *buf, size_t n);
 #endif
 
+#ifdef CONFIG_USER_SCENELOCK
+ssize_t scene_lock_show(struct kobject *kobj, struct kobj_attribute *attr,
+			char *buf);
+ssize_t scene_lock_store(struct kobject *kobj, struct kobj_attribute *attr,
+			const char *buf, size_t n);
+ssize_t scene_unlock_show(struct kobject *kobj, struct kobj_attribute *attr,
+			char *buf);
+ssize_t scene_unlock_store(struct kobject *kobj, struct kobj_attribute *attr,
+			const char *buf, size_t n);
+ssize_t scene_state_store(struct kobject *kobj, struct kobj_attribute *attr,
+	const char *buf, size_t n);
+ssize_t scene_state_show(
+	struct kobject *kobj, struct kobj_attribute *attr, char *buf);
+#endif
+
 #ifdef CONFIG_EARLYSUSPEND
 /* kernel/power/earlysuspend.c */
 void request_suspend_state(suspend_state_t state);

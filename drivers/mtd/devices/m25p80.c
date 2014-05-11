@@ -35,6 +35,19 @@
 #include <linux/spi/spi.h>
 #include <linux/spi/flash.h>
 
+#if 0
+#undef pr_debug
+#define pr_debug printk
+
+#define M25_DBG(fmt, arg...)	\
+	do { \
+		printk("%s()%d - ", __func__, __LINE__); \
+		printk(fmt, ##arg); \
+	} while (0)
+#else
+#define M25_DBG(fmt, arg...)
+#endif
+
 /* Flash opcodes. */
 #define	OPCODE_WREN		0x06	/* Write enable */
 #define	OPCODE_RDSR		0x05	/* Read status register */
@@ -115,10 +128,10 @@ static int read_sr(struct m25p *flash)
 {
 	ssize_t retval;
 	u8 code = OPCODE_RDSR;
-	u8 val;
+	u8 val = 0;
 
 	retval = spi_write_then_read(flash->spi, &code, 1, &val, 1);
-
+	M25_DBG("Read status reg %#x, return %d \n", val, retval);
 	if (retval < 0) {
 		dev_err(&flash->spi->dev, "error %d reading SR\n",
 				(int) retval);
@@ -379,6 +392,7 @@ static int m25p80_read(struct mtd_info *mtd, loff_t from, size_t len,
 	flash->command[0] = OPCODE_READ;
 	m25p_addr2cmd(flash, from, flash->command);
 
+	M25_DBG("m25p_cmdsz() = %d\n", m25p_cmdsz(flash));
 	spi_sync(flash->spi, &m);
 
 	*retlen = m.actual_length - m25p_cmdsz(flash) - FAST_READ_DUMMY_BYTE;
@@ -429,6 +443,7 @@ static int m25p80_write(struct mtd_info *mtd, loff_t to, size_t len,
 	m25p_addr2cmd(flash, to, flash->command);
 
 	page_offset = to & (flash->page_size - 1);
+	M25_DBG("page_offset = %d, to = 0x%llx, flash->page_size = %d\n", page_offset, to, flash->page_size);
 
 	/* do all the bytes fit onto one page? */
 	if (page_offset + len <= flash->page_size) {
@@ -447,6 +462,7 @@ static int m25p80_write(struct mtd_info *mtd, loff_t to, size_t len,
 		spi_sync(flash->spi, &m);
 
 		*retlen = m.actual_length - m25p_cmdsz(flash);
+		M25_DBG("m.actual_length = %d\n", m.actual_length);
 
 		/* write everything in flash->page_size chunks */
 		for (i = page_size; i < len; i += page_size) {
@@ -467,6 +483,7 @@ static int m25p80_write(struct mtd_info *mtd, loff_t to, size_t len,
 			spi_sync(flash->spi, &m);
 
 			*retlen += m.actual_length - m25p_cmdsz(flash);
+			M25_DBG("*retlen = %d\n", *retlen);
 		}
 	}
 
@@ -739,6 +756,15 @@ static const struct spi_device_id m25p_ids[] = {
 };
 MODULE_DEVICE_TABLE(spi, m25p_ids);
 
+static struct mtd_partition partitions[] =
+{
+		{
+		.name = "NorFlash part0",
+		.offset = 0,
+		.size = MTDPART_SIZ_FULL
+		}
+};
+
 static const struct spi_device_id *__devinit jedec_probe(struct spi_device *spi)
 {
 	int			tmp;
@@ -821,11 +847,14 @@ static int __devinit m25p_probe(struct spi_device *spi)
 	}
 
 	info = (void *)id->driver_data;
+	M25_DBG("info->jedec_id = %#x \n", info->jedec_id);
 
 	if (info->jedec_id) {
 		const struct spi_device_id *jid;
 
 		jid = jedec_probe(spi);
+		M25_DBG("jid = %p\n", jid);
+
 		if (IS_ERR(jid)) {
 			return PTR_ERR(jid);
 		} else if (jid != id) {
@@ -938,9 +967,14 @@ static int __devinit m25p_probe(struct spi_device *spi)
 	/* partitions should match sector boundaries; and it may be good to
 	 * use readonly partitions for writeprotected sectors (BP2..BP0).
 	 */
+#if 0	 
 	return mtd_device_parse_register(&flash->mtd, NULL, &ppdata,
 			data ? data->parts : NULL,
 			data ? data->nr_parts : 0);
+#else
+	return mtd_device_parse_register(&flash->mtd, NULL, &ppdata,
+			partitions, ARRAY_SIZE(partitions));
+#endif
 }
 
 

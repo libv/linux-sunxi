@@ -14,6 +14,9 @@
 #include <linux/device.h>
 #include <linux/mod_devicetable.h>
 
+#define PLATFORM_DEVID_NONE	(-1)
+#define PLATFORM_DEVID_AUTO	(-2)
+
 struct mfd_cell;
 
 struct platform_device {

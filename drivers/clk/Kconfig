@@ -12,7 +12,6 @@ config HAVE_MACH_CLKDEV
 config COMMON_CLK
 	bool
 	select HAVE_CLK_PREPARE
-	select CLKDEV_LOOKUP
 	---help---
 	  The common clock framework is a single definition of struct
 	  clk, useful across many platforms, as well as an
@@ -34,6 +33,14 @@ config COMMON_CLK_DISABLE_UNUSED
 
 	  If in doubt, say "N".
 
+config COMMON_CLK_ENABLE_SYNCBOOT
+	bool "sync enable_count with real hardware status when register"
+	depends on COMMON_CLK && ARCH_SUNXI
+	---help---
+	sync enable_count with real hardware status when register.
+
+	If in doubt, say "N".
+
 config COMMON_CLK_DEBUG
 	bool "DebugFS representation of clock tree"
 	depends on COMMON_CLK
@@ -44,5 +51,5 @@ config COMMON_CLK_DEBUG
 	  that export information specific to that clk node: clk_rate,
 	  clk_flags, clk_prepare_count, clk_enable_count &
 	  clk_notifier_count.
-
+source "drivers/clk/sunxi/Kconfig"
 endmenu

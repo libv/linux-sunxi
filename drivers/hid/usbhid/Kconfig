@@ -21,6 +21,12 @@ config USB_HID
 	  To compile this driver as a module, choose M here: the
 	  module will be called usbhid.
 
+config HID_REMOTE_WAKEUP
+	boolean "USB HID remote wakeup support"
+	depends on USB && USB_HID
+	help
+	  USB HID remote wakeup
+
 comment "Input core support is needed for USB HID input layer or HIDBP support"
 	depends on USB_HID && INPUT=n
 

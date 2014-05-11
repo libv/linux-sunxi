@@ -37,6 +37,13 @@ struct videobuf_dma_contig_memory {
 		BUG();							    \
 	}
 
+// #define USE_DMA_CONTIG
+#define USE_SUNXI_MEM_ALLOCATOR
+
+#ifdef USE_SUNXI_MEM_ALLOCATOR
+#include <linux/ion_sunxi.h>
+#endif
+
 static void
 videobuf_vm_open(struct vm_area_struct *vma)
 {
@@ -91,8 +98,14 @@ static void videobuf_vm_close(struct vm_area_struct *vma)
 				dev_dbg(q->dev, "buf[%d] freeing %p\n",
 					i, mem->vaddr);
 
+#ifdef USE_DMA_CONTIG
 				dma_free_coherent(q->dev, mem->size,
 						  mem->vaddr, mem->dma_handle);
+#endif 
+
+#ifdef USE_SUNXI_MEM_ALLOCATOR
+				sunxi_mem_free(mem->dma_handle, mem->size);
+#endif 
 				mem->vaddr = NULL;
 			}
 
@@ -283,8 +296,25 @@ static int __videobuf_mmap_mapper(struct videobuf_queue *q,
 	MAGIC_CHECK(mem->magic, MAGIC_DC_MEM);
 
 	mem->size = PAGE_ALIGN(buf->bsize);
+#ifdef USE_DMA_CONTIG
 	mem->vaddr = dma_alloc_coherent(q->dev, mem->size,
 					&mem->dma_handle, GFP_KERNEL);
+#endif
+
+#ifdef USE_SUNXI_MEM_ALLOCATOR
+	mem->dma_handle = sunxi_mem_alloc(mem->size);
+	if (mem->dma_handle)
+	{
+		mem->vaddr = (void *)(mem->dma_handle + 0x80000000);	// not used
+		//mem->vaddr =  (void*)ioremap((unsigned long)mem->dma_handle, mem->size);//ioremap_nocache
+		//mem->vaddr =  sunxi_map_kernel((unsigned long)mem->dma_handle, mem->size);
+	}
+	else
+	{
+		mem->vaddr = NULL;
+	}
+#endif					
+					
 	if (!mem->vaddr) {
 		dev_err(q->dev, "dma_alloc_coherent size %ld failed\n",
 			mem->size);
@@ -297,15 +327,23 @@ static int __videobuf_mmap_mapper(struct videobuf_queue *q,
 
 	size = vma->vm_end - vma->vm_start;
 	size = (size < mem->size) ? size : mem->size;
-
+#if 0	//modify by raymonxiu, buffer need cached
 	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
+#endif
 	retval = remap_pfn_range(vma, vma->vm_start,
 				 mem->dma_handle >> PAGE_SHIFT,
 				 size, vma->vm_page_prot);
 	if (retval) {
 		dev_err(q->dev, "mmap: remap failed with error %d. ", retval);
+#ifdef USE_DMA_CONTIG
 		dma_free_coherent(q->dev, mem->size,
 				  mem->vaddr, mem->dma_handle);
+#endif
+
+#ifdef USE_SUNXI_MEM_ALLOCATOR
+		sunxi_mem_free(mem->dma_handle, mem->size);
+		//sunxi_unmap_kernel(mem->vaddr);
+#endif
 		goto error;
 	}
 
@@ -389,7 +427,14 @@ void videobuf_dma_contig_free(struct videobuf_queue *q,
 
 	/* read() method */
 	if (mem->vaddr) {
+#ifdef USE_DMA_CONTIG
 		dma_free_coherent(q->dev, mem->size, mem->vaddr, mem->dma_handle);
+#endif
+
+#ifdef USE_SUNXI_MEM_ALLOCATOR
+		sunxi_mem_free(mem->dma_handle, mem->size);
+		//iounmap(mem->vaddr);
+#endif
 		mem->vaddr = NULL;
 	}
 }

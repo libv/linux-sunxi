@@ -229,6 +229,18 @@ static int gic_retrigger(struct irq_data *d)
 	return -ENXIO;
 }
 
+void gic_cpu_exit(unsigned int gic_nr)
+{
+	struct gic_chip_data *gic;
+	void __iomem *base;
+
+	BUG_ON(gic_nr >= MAX_GIC_NR);
+
+	gic = &gic_data[gic_nr];
+	base = gic_data_cpu_base(gic);
+	writel_relaxed(0, base + GIC_CPU_CTRL);
+}
+
 #ifdef CONFIG_SMP
 static int gic_set_affinity(struct irq_data *d, const struct cpumask *mask_val,
 			    bool force)

@@ -1,0 +1,34 @@
+menuconfig AW_AXP
+	bool "AXP Power drivers"
+	depends on REGULATOR
+	default y
+	---help---
+	This option allows you to select AXP power driver
+
+if AW_AXP
+
+config AW_AXP22
+	bool "AXP22 driver"
+	depends on SUNXI_ARISC
+	---help---
+	AXP22 driver
+
+config AW_AXP15
+	bool "AXP15 driver"
+	depends on SUNXI_ARISC
+	---help---
+	AXP15 driver
+
+config AXP_CHARGEINIT
+	bool "AXP initial charging environment set"
+	default y
+
+config AXP_CHGCHANGE
+	bool "AXP charging current set when suspend\resume\shutdown"
+	default y
+
+config AXP_TWI_USED
+	bool "AXP use twi as transfer channel"
+	default n
+	
+endif # !AW_AXP

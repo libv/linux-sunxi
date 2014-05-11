@@ -26,7 +26,7 @@
 #include <asm/system_info.h>
 #include <asm/sched_clock.h>
 
-static unsigned long arch_timer_rate;
+static unsigned long arch_timer_rate = 24000000;
 static int arch_timer_ppi;
 static int arch_timer_ppi2;
 
@@ -139,6 +139,7 @@ static int __cpuinit arch_timer_setup(struct clock_event_device *clk)
 	/* Be safe... */
 	arch_timer_disable();
 
+
 	clk->features = CLOCK_EVT_FEAT_ONESHOT;
 	clk->name = "arch_sys_timer";
 	clk->rating = 450;
@@ -197,6 +198,18 @@ static inline cycle_t arch_counter_get_cntpct(void)
 	asm volatile("mrrc p15, 0, %0, %1, c14" : "=r" (cvall), "=r" (cvalh));
 
 	return ((cycle_t) cvalh << 32) | cvall;
+}
+
+static u32 notrace arch_counter_get_cntpct32(void)
+{
+	cycle_t cntvct = arch_counter_get_cntpct();
+
+	/*
+	 * The sched_clock infrastructure only knows about counters
+	 * with at most 32bits. Forget about the upper 24 bits for the
+	 * time being...
+	 */
+	return (u32)(cntvct & (u32)~0);
 }
 
 static inline cycle_t arch_counter_get_cntvct(void)
@@ -371,6 +384,6 @@ int __init arch_timer_sched_clock_init(void)
 	if (err)
 		return err;
 
-	setup_sched_clock(arch_counter_get_cntvct32, 32, arch_timer_rate);
+	setup_sched_clock(arch_counter_get_cntpct32, 32, arch_timer_rate);
 	return 0;
 }

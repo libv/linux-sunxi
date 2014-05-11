@@ -107,6 +107,13 @@ ENTRY(stext)
 	blo	__error_p			@ only classic page table format
 #endif
 
+#if defined(CONFIG_MMU) && defined(CONFIG_ARM_V7)
+	mrc	p15, 0, r3, c0, c1, 4		@ read ID_MMFR0
+	and	r3, r3, #0xf			@ extract VMSA support
+ THUMB( it	eq )				@ force fixup-able long branch encoding
+	beq	__error_p			@ We have CONFIG_MMU and no MMU, so fail
+#endif
+
 #ifndef CONFIG_XIP_KERNEL
 	adr	r3, 2f
 	ldmia	r3, {r4, r8}
@@ -120,6 +127,7 @@ ENTRY(stext)
 	 * r1 = machine no, r2 = atags or dtb,
 	 * r8 = phys_offset, r9 = cpuid, r10 = procinfo
 	 */
+
 	bl	__vet_atags
 #ifdef CONFIG_SMP_ON_UP
 	bl	__fixup_smp

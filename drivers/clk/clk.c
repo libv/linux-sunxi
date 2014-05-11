@@ -16,6 +16,7 @@
 #include <linux/err.h>
 #include <linux/list.h>
 #include <linux/slab.h>
+#include <linux/device.h>
 
 static DEFINE_SPINLOCK(enable_lock);
 static DEFINE_MUTEX(prepare_lock);
@@ -250,6 +251,72 @@ late_initcall(clk_disable_unused);
 static inline int clk_disable_unused(struct clk *clk) { return 0; }
 #endif /* CONFIG_COMMON_CLK_DISABLE_UNUSED */
 
+#ifdef CONFIG_COMMON_CLK_ENABLE_SYNCBOOT
+/* caller must hold prepare_lock */
+static void clk_syncboot_subtree(struct clk *clk)
+{
+	struct clk *child;
+	struct clk *parent;
+	struct hlist_node *tmp;
+	unsigned long flags;
+
+	if (!clk)
+		goto out;
+
+	hlist_for_each_entry(child, tmp, &clk->children, child_node)
+		clk_syncboot_subtree(child);
+
+	spin_lock_irqsave(&enable_lock, flags);
+
+	if (clk->enable_count)
+		goto unlock_out;
+
+	if (__clk_is_enabled(clk) && clk->ops->enable && (!clk->ops->prepare))
+    {
+        printk(KERN_INFO "try to syncboot of clk %s\n",clk->name);
+        if((!clk->prepare_count) && (!clk->enable_count))
+        {
+            clk->ops->enable(clk->hw);
+            clk->prepare_count++;
+            clk->enable_count++;
+            parent = clk->parent;
+            while(parent)
+            {
+                parent->enable_count++;
+                parent->prepare_count++;
+                parent = parent->parent;
+            }
+        }
+
+    }
+unlock_out:
+	spin_unlock_irqrestore(&enable_lock, flags);
+
+out:
+	return;
+}
+
+static int clk_syncboot(void)
+{
+	struct clk *clk;
+	struct hlist_node *tmp;
+
+	mutex_lock(&prepare_lock);
+
+	hlist_for_each_entry(clk, tmp, &clk_root_list, child_node)
+		clk_syncboot_subtree(clk);
+
+	hlist_for_each_entry(clk, tmp, &clk_orphan_list, child_node)
+		clk_syncboot_subtree(clk);
+
+	mutex_unlock(&prepare_lock);
+
+	return 0;
+}
+postcore_initcall(clk_syncboot);
+#else
+static inline int clk_syncboot(struct clk *clk) { return 0; }
+#endif /* CONFIG_COMMON_CLK_DISABLE_UNUSED */
 /***    helper functions   ***/
 
 inline const char *__clk_get_name(struct clk *clk)
@@ -1214,6 +1281,25 @@ EXPORT_SYMBOL_GPL(clk_set_parent);
  *
  * Initializes the lists in struct clk, queries the hardware for the
  * parent and rate and sets them both.
+ *
+ * Any struct clk passed into __clk_init must have the following members
+ * populated:
+ * 	.name
+ * 	.ops
+ * 	.hw
+ * 	.parent_names
+ * 	.num_parents
+ * 	.flags
+ *
+ * Essentially, everything that would normally be passed into clk_register is
+ * assumed to be initialized already in __clk_init.  The other members may be
+ * populated, but are optional.
+ *
+ * __clk_init is only exposed via clk-private.h and is intended for use with
+ * very large numbers of clocks that need to be statically initialized.  It is
+ * a layering violation to include clk-private.h from any code which implements
+ * a clock's .ops; as such any statically initialized clock data MUST be in a
+ * separate C file from the logic that implements it's operations.
  */
 int __clk_init(struct device *dev, struct clk *clk)
 {
@@ -1233,7 +1319,6 @@ int __clk_init(struct device *dev, struct clk *clk)
 		ret = -EEXIST;
 		goto out;
 	}
-
 	/* check that clk_ops are sane.  See Documentation/clk.txt */
 	if (clk->ops->set_rate &&
 			!(clk->ops->round_rate && clk->ops->recalc_rate)) {
@@ -1319,12 +1404,20 @@ int __clk_init(struct device *dev, struct clk *clk)
 	 * walk the list of orphan clocks and reparent any that are children of
 	 * this clock
 	 */
-	hlist_for_each_entry_safe(orphan, tmp, tmp2, &clk_orphan_list, child_node)
+	hlist_for_each_entry_safe(orphan, tmp, tmp2, &clk_orphan_list, child_node) {
+		if (orphan->ops->get_parent) {
+			i = orphan->ops->get_parent(orphan->hw);
+			if (!strcmp(clk->name, orphan->parent_names[i]))
+				__clk_reparent(orphan, clk);
+			continue;
+		}
+
 		for (i = 0; i < orphan->num_parents; i++)
 			if (!strcmp(clk->name, orphan->parent_names[i])) {
 				__clk_reparent(orphan, clk);
 				break;
 			}
+	 }
 
 	/*
 	 * optional platform-specific magic
@@ -1346,44 +1439,6 @@ out:
 }
 
 /**
- * __clk_register - register a clock and return a cookie.
- *
- * Same as clk_register, except that the .clk field inside hw shall point to a
- * preallocated (generally statically allocated) struct clk. None of the fields
- * of the struct clk need to be initialized.
- *
- * The data pointed to by .init and .clk field shall NOT be marked as init
- * data.
- *
- * __clk_register is only exposed via clk-private.h and is intended for use with
- * very large numbers of clocks that need to be statically initialized.  It is
- * a layering violation to include clk-private.h from any code which implements
- * a clock's .ops; as such any statically initialized clock data MUST be in a
- * separate C file from the logic that implements it's operations.  Returns 0
- * on success, otherwise an error code.
- */
-struct clk *__clk_register(struct device *dev, struct clk_hw *hw)
-{
-	int ret;
-	struct clk *clk;
-
-	clk = hw->clk;
-	clk->name = hw->init->name;
-	clk->ops = hw->init->ops;
-	clk->hw = hw;
-	clk->flags = hw->init->flags;
-	clk->parent_names = hw->init->parent_names;
-	clk->num_parents = hw->init->num_parents;
-
-	ret = __clk_init(dev, clk);
-	if (ret)
-		return ERR_PTR(ret);
-
-	return clk;
-}
-EXPORT_SYMBOL_GPL(__clk_register);
-
-/**
  * clk_register - allocate a new clock, register it and return an opaque cookie
  * @dev: device that is registering this clock
  * @hw: link to hardware-specific clock data
@@ -1396,7 +1451,7 @@ EXPORT_SYMBOL_GPL(__clk_register);
  */
 struct clk *clk_register(struct device *dev, struct clk_hw *hw)
 {
-	int i, ret;
+	int ret;
 	struct clk *clk;
 
 	clk = kzalloc(sizeof(*clk), GFP_KERNEL);
@@ -1405,52 +1460,18 @@ struct clk *clk_register(struct device *dev, struct clk_hw *hw)
 		ret = -ENOMEM;
 		goto fail_out;
 	}
-
-	clk->name = kstrdup(hw->init->name, GFP_KERNEL);
-	if (!clk->name) {
-		pr_err("%s: could not allocate clk->name\n", __func__);
-		ret = -ENOMEM;
-		goto fail_name;
-	}
+	clk->name = hw->init->name;
 	clk->ops = hw->init->ops;
 	clk->hw = hw;
 	clk->flags = hw->init->flags;
+	clk->parent_names = hw->init->parent_names;
 	clk->num_parents = hw->init->num_parents;
 	hw->clk = clk;
 
-	/* allocate local copy in case parent_names is __initdata */
-	clk->parent_names = kzalloc((sizeof(char*) * clk->num_parents),
-			GFP_KERNEL);
-
-	if (!clk->parent_names) {
-		pr_err("%s: could not allocate clk->parent_names\n", __func__);
-		ret = -ENOMEM;
-		goto fail_parent_names;
-	}
-
-
-	/* copy each string name in case parent_names is __initdata */
-	for (i = 0; i < clk->num_parents; i++) {
-		clk->parent_names[i] = kstrdup(hw->init->parent_names[i],
-						GFP_KERNEL);
-		if (!clk->parent_names[i]) {
-			pr_err("%s: could not copy parent_names\n", __func__);
-			ret = -ENOMEM;
-			goto fail_parent_names_copy;
-		}
-	}
-
 	ret = __clk_init(dev, clk);
 	if (!ret)
-		return clk;
+        return clk;
 
-fail_parent_names_copy:
-	while (--i >= 0)
-		kfree(clk->parent_names[i]);
-	kfree(clk->parent_names);
-fail_parent_names:
-	kfree(clk->name);
-fail_name:
 	kfree(clk);
 fail_out:
 	return ERR_PTR(ret);

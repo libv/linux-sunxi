@@ -200,7 +200,7 @@ SECTIONS
 
 		/*
 		 * first, the init task union, aligned
-		 * to an 8192 byte boundary.
+		 * to an THREAD_SIZE byte boundary.
 		 */
 		INIT_TASK_DATA(THREAD_SIZE)
 

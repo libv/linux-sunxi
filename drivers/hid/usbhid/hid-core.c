@@ -36,6 +36,8 @@
 #include <linux/hid-debug.h>
 #include <linux/hidraw.h>
 #include "usbhid.h"
+#include <linux/arisc/arisc.h>
+#include <linux/power/aw_pm.h>
 
 /*
  * Version Information
@@ -1424,6 +1426,99 @@ void usbhid_put_power(struct hid_device *hid)
 	usb_autopm_put_interface(usbhid->intf);
 }
 
+#ifdef  CONFIG_HID_REMOTE_WAKEUP
+
+#include  <linux/usb/ch9.h>
+#include  <linux/usb/ch11.h>
+
+static int g_hid_suspend = 0;
+
+static int hid_suspend_resume(struct usb_device *udev, u32 suspend)
+{
+	struct usb_device *hdev = NULL;
+    struct usb_port_status data;
+    int status = 0;
+	int port1 = 0;
+
+    printk("hid_suspend_resume: %s\n", suspend ? "suspend" : "resume");
+
+    if(!udev->parent){
+        port1 = 1;
+        hdev = udev;
+    }else{
+        port1 = udev->portnum;
+        hdev = udev->parent;
+    }
+
+    if(suspend){
+		if(g_hid_suspend){
+			return 0;
+		}
+
+        printk("hid_suspend_resume: set remote wakeup\n");
+
+		g_hid_suspend = 1;
+
+        /* set remote wakeup */
+        status = usb_control_msg(udev, usb_sndctrlpipe(udev, 0),
+				USB_REQ_SET_FEATURE, USB_RECIP_DEVICE,
+				USB_DEVICE_REMOTE_WAKEUP, 0,
+				NULL, 0,
+				USB_CTRL_SET_TIMEOUT);
+		if(status){
+		    printk("err: set remote wakeup failed, status=%d\n", status);
+		    return -1;
+		}
+
+        /* suspend */
+		status = usb_control_msg(hdev, usb_sndctrlpipe(hdev, 0),
+		        USB_REQ_SET_FEATURE, USB_RT_PORT,
+		        USB_PORT_FEAT_SUSPEND, port1,
+		        NULL, 0, 1000);
+		if(status){
+		    printk("err: suspend port failed, status=%d\n", status);
+		    return -1;
+		}
+    }else{
+		if(!g_hid_suspend){
+			return 0;
+		}
+
+        printk("hid_suspend_resume: clear remote wakeup\n");
+
+		g_hid_suspend = 0;
+
+        /* resume */
+        status = usb_control_msg(hdev, usb_sndctrlpipe(hdev, 0),
+		        USB_REQ_CLEAR_FEATURE, USB_RT_PORT,
+		        USB_PORT_FEAT_SUSPEND, port1,
+		        NULL, 0, 1000);
+		if(status){
+		    printk("err: resume port failed, status=%d\n", status);
+		    return -1;
+		}
+
+        /* resume complete */
+		status = usb_control_msg(hdev, usb_rcvctrlpipe(hdev, 0),
+			    USB_REQ_GET_STATUS, USB_DIR_IN | USB_RT_PORT, 0, port1,
+			    &data, sizeof(struct usb_port_status), 1000);
+
+        /* clear remote wakeup */
+        status = usb_control_msg(udev, usb_sndctrlpipe(udev, 0),
+                USB_REQ_CLEAR_FEATURE, USB_RECIP_DEVICE,
+                USB_DEVICE_REMOTE_WAKEUP, 0,
+                NULL, 0,
+                USB_CTRL_SET_TIMEOUT);
+        if(status){
+		    printk("err: clear remote wakeup failed, status=%d\n", status);
+		    return -1;
+		}
+    }
+
+	return 0;
+}
+
+#endif
 
 #ifdef CONFIG_PM
 static int hid_suspend(struct usb_interface *intf, pm_message_t message)
@@ -1431,7 +1526,6 @@ static int hid_suspend(struct usb_interface *intf, pm_message_t message)
 	struct hid_device *hid = usb_get_intfdata(intf);
 	struct usbhid_device *usbhid = hid->driver_data;
 	int status;
-
 	if (PMSG_IS_AUTO(message)) {
 		spin_lock_irq(&usbhid->lock);	/* Sync with error handler */
 		if (!test_bit(HID_RESET_PENDING, &usbhid->iofl)
@@ -1479,6 +1573,11 @@ static int hid_suspend(struct usb_interface *intf, pm_message_t message)
 		return -EBUSY;
 	}
 	dev_dbg(&intf->dev, "suspend\n");
+
+#ifdef  CONFIG_HID_REMOTE_WAKEUP
+    hid_suspend_resume(interface_to_usbdev(intf), 1);
+#endif
+
 	return 0;
 }
 
@@ -1487,7 +1586,10 @@ static int hid_resume(struct usb_interface *intf)
 	struct hid_device *hid = usb_get_intfdata (intf);
 	struct usbhid_device *usbhid = hid->driver_data;
 	int status;
-
+#ifdef  CONFIG_HID_REMOTE_WAKEUP
+	int rc = 0;
+	unsigned long standby_wakeup_event = 0;
+#endif
 	if (!test_bit(HID_STARTED, &usbhid->iofl))
 		return 0;
 
@@ -1508,6 +1610,16 @@ static int hid_resume(struct usb_interface *intf)
 		if (ret < 0)
 			status = ret;
 	}
+
+#ifdef  CONFIG_HID_REMOTE_WAKEUP
+	hid_suspend_resume(interface_to_usbdev(intf), 0);
+	arisc_query_wakeup_source(&standby_wakeup_event);
+	if (standby_wakeup_event & CPUS_WAKEUP_USBMOUSE) {
+		rc = usb_submit_urb(usbhid->urbin, GFP_ATOMIC);
+		if (rc != 0)
+			clear_bit(HID_IN_RUNNING, &usbhid->iofl);
+	}
+#endif
 	dev_dbg(&intf->dev, "resume status %d\n", status);
 	return 0;
 }

@@ -48,7 +48,6 @@ config THERMAL_DEFAULT_GOV_USER_SPACE
 	help
 	  Select this if you want to let the user space manage the
 	  lpatform thermals.
-
 endchoice
 
 config FAIR_SHARE
@@ -66,18 +65,6 @@ config USER_SPACE
 	help
 	  Enable this to let the user space manage the platform thermals.
 
-config CPU_THERMAL
-	tristate "generic cpu cooling support"
-	depends on CPU_FREQ
-	select CPU_FREQ_TABLE
-	help
-	  This implements the generic cpu cooling mechanism through frequency
-	  reduction, cpu hotplug and any other ways of reducing temperature. An
-	  ACPI version of this already exists(drivers/acpi/processor_thermal.c).
-	  This will be useful for platforms using the generic thermal interface
-	  and not the ACPI interface.
-	  If you want this support, you should say Y here.
-
 config SPEAR_THERMAL
 	bool "SPEAr thermal sensor driver"
 	depends on PLAT_SPEAR
@@ -92,5 +79,24 @@ config RCAR_THERMAL
 	help
 	  Enable this to plug the R-Car thermal sensor driver into the Linux
 	  thermal framework
+
+config SUNXI_THERMAL
+	tristate "Temperature sensor on ALLWINNERTECH"
+	#depends on ARCH_SUN9IW1P1
+	default y
+	help
+	  If you say yes here you get support for (Thermal Management
+	  Unit) on ALLWINEER series of SoC.
+
+config CPU_THERMAL
+	tristate "generic cpu cooling support"
+	default y
+	help
+	  This implements the generic cpu cooling mechanism through frequency
+	  reduction, cpu hotplug and any other ways of reducing temperature. An
+	  ACPI version of this already exists(drivers/acpi/processor_thermal.c).
+	  This will be useful for platforms using the generic thermal interface
+	  and not the ACPI interface.
+	  If you want this support, you should say Y here.
 
 endif

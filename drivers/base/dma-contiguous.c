@@ -128,7 +128,11 @@ void __init dma_contiguous_reserve(phys_addr_t limit)
 		pr_debug("%s: reserving %ld MiB for global area\n", __func__,
 			 (unsigned long)selected_size / SZ_1M);
 
+#ifdef CONFIG_ARCH_SUNXI /* ve can only use phys memory in below 256M */
+		dma_declare_contiguous(NULL, selected_size, CONFIG_CMA_RESERVE_BASE, limit);
+#else
 		dma_declare_contiguous(NULL, selected_size, 0, limit);
+#endif
 	}
 };
 

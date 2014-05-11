@@ -14,8 +14,19 @@
 
 extern void printch(int);
 
+#ifndef CONFIG_EVB_PLATFORM
+extern bool first_print;
+extern int uart_init(void);
+#endif
+
 static void early_write(const char *s, unsigned n)
 {
+#ifndef CONFIG_EVB_PLATFORM
+	if(first_print) {
+		first_print = false;
+		uart_init();
+	}
+#endif
 	while (n-- > 0) {
 		if (*s == '\n')
 			printch('\r');

@@ -17,6 +17,10 @@ obj-y				  += backlight/
 
 obj-$(CONFIG_EXYNOS_VIDEO)     += exynos/
 
+obj-$(CONFIG_FB_SUNXI)     += sunxi/disp/
+obj-$(CONFIG_LCD_SUNXI)    += sunxi/lcd/
+obj-$(CONFIG_HDMI_SUNXI)   += sunxi/hdmi/
+
 obj-$(CONFIG_FB_CFB_FILLRECT)  += cfbfillrect.o
 obj-$(CONFIG_FB_CFB_COPYAREA)  += cfbcopyarea.o
 obj-$(CONFIG_FB_CFB_IMAGEBLIT) += cfbimgblt.o

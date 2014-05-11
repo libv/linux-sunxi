@@ -355,6 +355,19 @@ config SPI_STMP3XXX
 	help
 	  SPI driver for Freescale STMP37xx/378x SoC SSP interface
 
+config SPI_SUNXI
+   tristate "SUNXI SPI Controller"
+   depends on ARCH_SUNXI
+   help
+       Allwinner Soc SPI controller, present on SUNXI chips.
+
+config SPI_CHAN_NUM
+	int "The SPI channel number in FPGA board."
+	depends on SPI_SUNXI && (FPGA_V4_PLATFORM || FPGA_V7_PLATFORM)
+	default "0"
+	help 
+		The SPI channel number in FPGA board.
+	
 config SPI_TEGRA
 	tristate "Nvidia Tegra SPI controller"
 	depends on ARCH_TEGRA && TEGRA_SYSTEM_DMA

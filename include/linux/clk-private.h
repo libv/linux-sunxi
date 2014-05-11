@@ -55,6 +55,8 @@ struct clk {
  * alternative macro for static initialization
  */
 
+extern struct clk_ops clk_fixed_rate_ops;
+
 #define DEFINE_CLK_FIXED_RATE(_name, _flags, _rate,		\
 				_fixed_rate_flags)		\
 	static struct clk _name;				\
@@ -75,6 +77,8 @@ struct clk {
 			ARRAY_SIZE(_name##_parent_names),	\
 		.flags = _flags,				\
 	};
+
+extern struct clk_ops clk_gate_ops;
 
 #define DEFINE_CLK_GATE(_name, _parent_name, _parent_ptr,	\
 				_flags, _reg, _bit_idx,		\
@@ -105,6 +109,8 @@ struct clk {
 		.parents = _name##_parents,			\
 		.flags = _flags,				\
 	};
+
+extern struct clk_ops clk_divider_ops;
 
 #define DEFINE_CLK_DIVIDER(_name, _parent_name, _parent_ptr,	\
 				_flags, _reg, _shift, _width,	\
@@ -137,6 +143,8 @@ struct clk {
 		.flags = _flags,				\
 	};
 
+extern struct clk_ops clk_mux_ops;
+
 #define DEFINE_CLK_MUX(_name, _parent_names, _parents, _flags,	\
 				_reg, _shift, _width,		\
 				_mux_flags, _lock)		\
@@ -162,26 +170,6 @@ struct clk {
 		.flags = _flags,				\
 	};
 
-#define DEFINE_CLK_FIXED_FACTOR(_name, _parent_name,		\
-				_parent_ptr, _flags,		\
-				_mult, _div)			\
-	static struct clk _name;				\
-	static const char *_name##_parent_names[] = {		\
-		_parent_name,					\
-	};							\
-	static struct clk *_name##_parents[] = {		\
-		_parent_ptr,					\
-	};							\
-	static struct clk_fixed_factor _name##_hw = {		\
-		.hw = {						\
-			.clk = &_name,				\
-		},						\
-		.mult = _mult,					\
-		.div = _div,					\
-	};							\
-	DEFINE_CLK(_name, clk_fixed_factor_ops, _flags,		\
-			_name##_parent_names, _name##_parents);
-
 /**
  * __clk_init - initialize the data structures in a struct clk
  * @dev:	device initializing this clk, placeholder for now
@@ -205,8 +193,6 @@ struct clk {
  * Returns 0 on success, otherwise an error code.
  */
 int __clk_init(struct device *dev, struct clk *clk);
-
-struct clk *__clk_register(struct device *dev, struct clk_hw *hw);
 
 #endif /* CONFIG_COMMON_CLK */
 #endif /* CLK_PRIVATE_H */

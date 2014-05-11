@@ -2,6 +2,12 @@
 menu "Bluetooth device drivers"
 	depends on BT
 
+config BT_RTKBTUSB
+	tristate "RTK HCI USB driver"
+	depends on USB
+	help
+	  RTK Bluetooth HCI USB driver.
+
 config BT_HCIBTUSB
 	tristate "HCI USB driver"
 	depends on USB
@@ -58,6 +64,34 @@ config BT_HCIUART_BCSP
 
 	  Say Y here to compile support for HCI BCSP protocol.
 
+config BT_LPM
+	tristate "Bluetooth Low Power Manager Support"
+	help
+	  Bluetooth Low Power Manager Driver.
+	  This driver provides the dynamic active power saving mechanism for
+	  bluetooth radio devices special for android4.2.
+
+	  Say Y here to compile support for bt lmp support into the kernel
+	  or say M to compile it as module (btlmp).
+
+config RTL_BT_LMP
+	tristate "Realtek Bluesleep driver support"
+	help
+	  Bluetooth Bluesleep Driver.
+	  This driver provides the dynamic active power saving mechanism for
+	  bluetooth radio devices.
+	  
+	  Say Y here to compile support for bluesleep support into the kernel
+	  or say M to compile it as module (bluesleep).
+
+config BT_LOW_LEVEL_TRIGGER
+	tristate "An inverter between bt hostwake pin and cpu"
+	depends on BT_LPM
+	default n
+	help
+	  This macro is needed while an inverter between bt_host_wake pin and cpu.
+	  Please check PCB to confirm whether define this macro, default is no.
+	  
 config BT_HCIUART_ATH3K
 	bool "Atheros AR300x serial support"
 	depends on BT_HCIUART

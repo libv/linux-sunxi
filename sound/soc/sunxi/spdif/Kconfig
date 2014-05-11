@@ -1,0 +1,6 @@
+
+config SND_SUNXI_SOC_SPDIF
+	tristate "sunxi On-Chip spdif"
+	select SND_SOC_DMAENGINE_PCM
+	default n
+

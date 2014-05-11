@@ -28,6 +28,10 @@
 #include <linux/usb/composite.h>
 #include <linux/usb/gadget.h>
 
+#ifdef CONFIG_USB_SUNXI_USB
+//#include <mach/system.h>
+#include <asm/cputype.h>
+#endif
 #include "gadget_chips.h"
 
 /*
@@ -807,21 +811,37 @@ static int mass_storage_function_init(struct android_usb_function *f,
 	struct mass_storage_function_config *config;
 	struct fsg_common *common;
 	int err;
-
+	int i = 0;    
 	config = kzalloc(sizeof(struct mass_storage_function_config),
 								GFP_KERNEL);
 	if (!config)
 		return -ENOMEM;
 
+#ifndef CONFIG_USB_SUNXI_USB
 	config->fsg.nluns = 1;
 	config->fsg.luns[0].removable = 1;
+#else
+    if(g_android_usb_config.luns <= FSG_MAX_LUNS){
+        config->fsg.nluns = g_android_usb_config.luns;
+     }else{
+		config->fsg.nluns = FSG_MAX_LUNS;
+        pr_debug("err: g_android_usb_config.luns is too big, (%d, 8)\n", g_android_usb_config.luns);
+    }
 
+    for(i = 0; i < config->fsg.nluns; i++){
+        config->fsg.luns[i].removable   = 1;
+        config->fsg.luns[i].ro          = 0;
+        config->fsg.luns[i].cdrom       = 0;
+        config->fsg.luns[i].nofua       = 1;
+    }
+#endif    
 	common = fsg_common_init(NULL, cdev, &config->fsg);
 	if (IS_ERR(common)) {
 		kfree(config);
 		return PTR_ERR(common);
 	}
 
+#ifndef CONFIG_USB_SUNXI_USB
 	err = sysfs_create_link(&f->dev->kobj,
 				&common->luns[0].dev.kobj,
 				"lun");
@@ -829,6 +849,29 @@ static int mass_storage_function_init(struct android_usb_function *f,
 		kfree(config);
 		return err;
 	}
+#else
+    for(i = 0; i < config->fsg.nluns; i++){
+        char name[32];
+
+        memset(name, 0, 32);
+
+        if(i){
+            snprintf(name, 5, "lun%d\n", i);
+        }else{
+            strcpy(name, "lun");
+        }
+
+        pr_debug("lun name: %s\n", name);
+
+        err = sysfs_create_link(&f->dev->kobj,
+                    &common->luns[i].dev.kobj,
+                    name);
+        if (err) {
+            kfree(config);
+            return err;
+        }
+    }
+#endif
 
 	config->common = common;
 	f->config = config;
@@ -1356,7 +1399,7 @@ static void android_unbind_config(struct usb_configuration *c)
 
 	android_unbind_enabled_functions(dev, c);
 }
-
+extern int get_chip_id2(uint32_t chip_id[4]);
 static int android_bind(struct usb_composite_dev *cdev)
 {
 	struct android_dev *dev = _android_dev;
@@ -1388,10 +1431,26 @@ static int android_bind(struct usb_composite_dev *cdev)
 	strings_dev[STRING_PRODUCT_IDX].id = id;
 	device_desc.iProduct = id;
 
+#ifndef CONFIG_USB_SUNXI_USB
 	/* Default strings - should be updated by userspace */
 	strncpy(manufacturer_string, "Android", sizeof(manufacturer_string)-1);
 	strncpy(product_string, "Android", sizeof(product_string) - 1);
 	strncpy(serial_string, "0123456789ABCDEF", sizeof(serial_string) - 1);
+#else
+{
+    struct android_usb_config usb_config;
+	//use axp_chip_id to set serial_string
+	uint32_t chipid[4];	
+	get_chip_id2(chipid);
+
+    get_android_usb_config(&usb_config);
+
+	strncpy(manufacturer_string, usb_config.usb_manufacturer_name, sizeof(manufacturer_string) - 1);
+	strncpy(product_string, usb_config.usb_product_name, sizeof(product_string) - 1);
+	memset( serial_string, 0, 256);	
+	sprintf( serial_string, "%03x%08x%08x", chipid[2],chipid[1],chipid[0]);
+}
+#endif
 
 	id = usb_string_id(cdev);
 	if (id < 0)
@@ -1524,6 +1583,17 @@ static int __init init(void)
 	struct android_dev *dev;
 	int err;
 
+#ifdef CONFIG_USB_SUNXI_USB
+{
+    struct android_usb_config usb_config;
+
+    parse_android_usb_config();
+    get_android_usb_config(&usb_config);
+
+    device_desc.idVendor    = usb_config.vendor_id;
+    device_desc.idProduct   = usb_config.mass_storage_id;
+}
+#endif
 	android_class = class_create(THIS_MODULE, "android_usb");
 	if (IS_ERR(android_class))
 		return PTR_ERR(android_class);

@@ -12,6 +12,45 @@ menuconfig INPUT_MISC
 
 if INPUT_MISC
 
+config E_COMPASS_L3M303D
+	tristate "E_COMPASS_L3M303D support"
+	depends on I2C
+	help
+	  Say Y here to enable the E_COMPASS_L3M303D.
+
+config E_COMPASS_FXOS8700
+	tristate "E_COMPASS_FXOS8700 support"
+	depends on I2C
+	help
+	  Say Y here to enable the E_COMPASS_FXOS8700.
+
+config GYR_L3GD20
+        tristate "GYR_L3GD20_GYR support"
+        depends on I2C
+        help
+	  Say Y here to enable the gyroscope.
+
+config INPUT_LTR501ALS
+	tristate "LTR501ALS LIGHT SENSOR driver"
+	depends on I2C
+	default m
+	help
+	Say Y here if you want to use LTR501ALS
+	  through I2C interface.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called ltr501als.
+
+config INPUT_JSA1212
+	tristate "JSA1212 LIGHT SENSOR driver"
+	depends on I2C
+	default m
+	help
+	Say Y here if you want to use JSA1212
+	  through I2C interface.
+
+	  To compile this driver as a module, choose M here: the
+
 config INPUT_88PM860X_ONKEY
 	tristate "88PM860x ONKEY support"
 	depends on MFD_88PM860X

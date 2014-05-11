@@ -91,6 +91,7 @@ struct usb_request {
 	void			*buf;
 	unsigned		length;
 	dma_addr_t		dma;
+	int				dma_flag;
 
 	struct scatterlist	*sg;
 	unsigned		num_sgs;

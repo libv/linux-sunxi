@@ -1,5 +1,7 @@
 menu "Device Drivers"
 
+source "drivers/arisc/Kconfig"
+
 source "drivers/base/Kconfig"
 
 source "drivers/connector/Kconfig"
@@ -78,6 +80,8 @@ source "drivers/mfd/Kconfig"
 
 source "drivers/regulator/Kconfig"
 
+source "drivers/pwm/Kconfig"
+
 source "drivers/media/Kconfig"
 
 source "drivers/video/Kconfig"
@@ -142,6 +146,5 @@ source "drivers/virt/Kconfig"
 
 source "drivers/devfreq/Kconfig"
 
-source "drivers/pwm/Kconfig"
-
+source "drivers/gator/Kconfig"
 endmenu

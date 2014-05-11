@@ -1,0 +1,19 @@
+
+config SND_SUNXI_SOC_AUDIOCODEC
+	tristate "Audiocodec for the SUNXI chips"
+	select SND_SOC_DMAENGINE_PCM
+	default n
+	help
+	  Say Y or M if you want to add support for audiocodec
+config SND_SUN8IW1_SNDCODEC
+	tristate "Audiocodec for the SUN8IW1 chips"
+	depends on ARCH_SUN8IW1
+	default n
+	help
+	  Say Y or M if you want to add sun8iw1 audiocodec support
+config SND_SUN8IW3_SNDCODEC
+	tristate "Audiocodec for the SUN8IW3 chips"
+	depends on ARCH_SUN8IW3
+	default n
+	help
+	  Say Y or M if you want to add sun8iw3 audiocodec support

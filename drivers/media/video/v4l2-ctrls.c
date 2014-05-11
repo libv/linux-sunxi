@@ -408,6 +408,9 @@ const char * const *v4l2_ctrl_get_menu(u32 id)
 		"Off",
 		"Flash",
 		"Torch",
+		//add by raymonxiu
+		"Auto",
+		"RedEye",
 		NULL,
 	};
 	static const char * const flash_strobe_source[] = {
@@ -558,6 +561,16 @@ const char *v4l2_ctrl_get_name(u32 id)
 	case V4L2_CID_MIN_BUFFERS_FOR_OUTPUT:	return "Min Number of Output Buffers";
 	case V4L2_CID_ALPHA_COMPONENT:		return "Alpha Component";
 	case V4L2_CID_COLORFX_CBCR:		return "Color Effects, CbCr";
+	//add by raymonxiu
+	case V4L2_CID_HFLIP_THUMB:		return "Horizontal Flip For Thumb";
+	case V4L2_CID_VFLIP_THUMB:		return "Vertical Flip For Thumb";
+	case V4L2_CID_AUTO_FOCUS_WIN_NUM:	return "AutoFocus Windows Number";
+	case V4L2_CID_AUTO_FOCUS_INIT:	return "AutoFocus Initial";
+	case V4L2_CID_AUTO_FOCUS_RELEASE:	return "AutoFocus Release";
+	case V4L2_CID_AUTO_EXPOSURE_WIN_NUM:	return "AutoExposure Windows Number";
+	case V4L2_CID_GSENSOR_ROTATION:		return "Gsensor Rotaion";
+	case V4L2_CID_FRAME_RATE:	return "AutoExposure Frame Rate";
+	case V4L2_CID_TAKE_PICTURE:         return "Take Picture";
 
 	/* MPEG controls */
 	/* Keep the order of the 'case's the same as in videodev2.h! */
@@ -767,6 +780,9 @@ void v4l2_ctrl_fill(u32 id, const char **name, enum v4l2_ctrl_type *type,
 	case V4L2_CID_MPEG_VIDEO_H264_8X8_TRANSFORM:
 	case V4L2_CID_MPEG_VIDEO_H264_VUI_SAR_ENABLE:
 	case V4L2_CID_MPEG_VIDEO_MPEG4_QPEL:
+	//add by raymonxiu
+	case V4L2_CID_HFLIP_THUMB:
+	case V4L2_CID_VFLIP_THUMB:
 	case V4L2_CID_WIDE_DYNAMIC_RANGE:
 	case V4L2_CID_IMAGE_STABILIZATION:
 		*type = V4L2_CTRL_TYPE_BOOLEAN;
@@ -779,6 +795,9 @@ void v4l2_ctrl_fill(u32 id, const char **name, enum v4l2_ctrl_type *type,
 	case V4L2_CID_FLASH_STROBE_STOP:
 	case V4L2_CID_AUTO_FOCUS_START:
 	case V4L2_CID_AUTO_FOCUS_STOP:
+	case V4L2_CID_AUTO_FOCUS_INIT:
+	case V4L2_CID_AUTO_FOCUS_RELEASE:
+	case V4L2_CID_TAKE_PICTURE:
 		*type = V4L2_CTRL_TYPE_BUTTON;
 		*flags |= V4L2_CTRL_FLAG_WRITE_ONLY;
 		*min = *max = *step = *def = 0;
@@ -829,7 +848,7 @@ void v4l2_ctrl_fill(u32 id, const char **name, enum v4l2_ctrl_type *type,
 		break;
 	case V4L2_CID_ISO_SENSITIVITY:
 	case V4L2_CID_AUTO_EXPOSURE_BIAS:
-		*type = V4L2_CTRL_TYPE_INTEGER_MENU;
+		*type = V4L2_CTRL_TYPE_INTEGER;
 		break;
 	case V4L2_CID_USER_CLASS:
 	case V4L2_CID_CAMERA_CLASS:
@@ -843,6 +862,12 @@ void v4l2_ctrl_fill(u32 id, const char **name, enum v4l2_ctrl_type *type,
 		*min = *max = *step = *def = 0;
 		break;
 	case V4L2_CID_BG_COLOR:
+	//add by raymonxiu
+	//private
+	case V4L2_CID_AUTO_FOCUS_WIN_NUM:
+	case V4L2_CID_AUTO_EXPOSURE_WIN_NUM:
+	case V4L2_CID_GSENSOR_ROTATION:
+	case V4L2_CID_FRAME_RATE:
 		*type = V4L2_CTRL_TYPE_INTEGER;
 		*step = 1;
 		*min = 0;

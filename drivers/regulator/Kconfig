@@ -1,5 +1,6 @@
 menuconfig REGULATOR
 	bool "Voltage and Current Regulator Support"
+	default y
 	help
 	  Generic Voltage and Current Regulator support.
 

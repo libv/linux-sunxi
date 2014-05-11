@@ -26,6 +26,8 @@
 #include <linux/device.h>
 #include <linux/mutex.h>
 #include <linux/rcupdate.h>
+
+
 #include "input-compat.h"
 
 MODULE_AUTHOR("Vojtech Pavlik <vojtech@suse.cz>");
@@ -44,6 +46,8 @@ static LIST_HEAD(input_handler_list);
  * input handlers.
  */
 static DEFINE_MUTEX(input_mutex);
+
+
 
 static struct input_handler *input_table[8];
 
@@ -68,6 +72,7 @@ static int input_defuzz_abs_event(int value, int old_val, int fuzz)
 
 	return value;
 }
+
 
 /*
  * Pass event first through all filters and then, if event has not been

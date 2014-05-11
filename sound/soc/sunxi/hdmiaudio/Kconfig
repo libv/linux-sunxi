@@ -1,0 +1,7 @@
+
+config SND_SUNXI_SOC_HDMIAUDIO
+	tristate "HDMI Audio for the ReuuiMlla SUNXI chips"
+	select SND_SOC_DMAENGINE_PCM
+	default n
+	help
+	  Say Y or M if you want to add support for hdmi audio

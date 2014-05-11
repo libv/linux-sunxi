@@ -63,6 +63,9 @@ struct serial8250_config {
 	unsigned int	flags;
 };
 
+extern void sunxi_8250_comeback_reg(int port_num,struct uart_port *port);
+extern void sunxi_8250_backup_reg(int port_num ,struct uart_port *port);
+
 #define UART_CAP_FIFO	(1 << 8)	/* UART has FIFO */
 #define UART_CAP_EFR	(1 << 9)	/* UART has EFR */
 #define UART_CAP_SLEEP	(1 << 10)	/* UART has IER sleep */

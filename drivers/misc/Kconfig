@@ -4,6 +4,14 @@
 
 menu "Misc devices"
 
+config SUNXI_VIBRATOR
+	tristate "Vibrator sunxi platform"
+	help
+	  Say Y here if you have a vibrator on your board.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called sunxi-vibrator.
+
 config SENSORS_LIS3LV02D
 	tristate
 	depends on INPUT
@@ -526,4 +534,5 @@ source "drivers/misc/ti-st/Kconfig"
 source "drivers/misc/lis3lv02d/Kconfig"
 source "drivers/misc/carma/Kconfig"
 source "drivers/misc/altera-stapl/Kconfig"
+source "drivers/misc/sw_3g_module/Kconfig"
 endmenu

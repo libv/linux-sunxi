@@ -912,6 +912,30 @@ static irqreturn_t ehci_irq (struct usb_hcd *hcd)
 	if (status & STS_PCD) {
 		unsigned	i = HCS_N_PORTS (ehci->hcs_params);
 		u32		ppcd = 0;
+{
+		int pstatus0 = 0;
+
+		pstatus0 = ehci_readl(ehci, &ehci->regs->port_status[0]);
+
+		if((pstatus0 & PORT_CONNECT) && (pstatus0 & PORT_CSC)){
+#ifdef  CONFIG_USB_SUNXI_HSIC
+		u32 reg_value = 0;
+		u32 tmp= 0;
+		reg_value = ehci_readl(ehci, (__u32 __iomem *)(ehci->caps + 0x800));
+		tmp = ehci_readl(ehci, (__u32 __iomem *)(ehci->caps + 0x804));
+		if((reg_value &(0x01 << 16)) && (tmp &(0x01 << 16))){
+			reg_value = ehci_readl(ehci, (__u32 __iomem *)(ehci->caps + 0x800));
+			reg_value &= ~(0x01 << 17); //☠锟connect☠锟
+			ehci_writel(ehci, reg_value, (__u32 __iomem *)(ehci->caps + 0x800));
+			printk("ehci_irq:caps_add:0x%p,caps:0x%x\n", ehci->caps, ehci_readl(ehci, (__u32 __iomem *)(ehci->caps + 0x800)));
+		}
+#endif
+		printk("ehci_irq: highspeed device connect\n");
+
+		}else if(!(pstatus0 & PORT_CONNECT) && (pstatus0 & PORT_CSC)){
+			printk("ehci_irq: highspeed device disconnect\n");
+		}
+}
 
 		/* kick root hub later */
 		pcd_status = status;
@@ -1383,6 +1407,11 @@ MODULE_LICENSE ("GPL");
 #ifdef CONFIG_USB_EHCI_HCD_PLATFORM
 #include "ehci-platform.c"
 #define PLATFORM_DRIVER		ehci_platform_driver
+#endif
+
+#ifdef CONFIG_USB_SUNXI_HCI
+#include "ehci_sunxi.c"
+#define	PLATFORM_DRIVER		sunxi_ehci_hcd_driver
 #endif
 
 #if !defined(PCI_DRIVER) && !defined(PLATFORM_DRIVER) && \

@@ -63,6 +63,11 @@ config DEVFREQ_GOV_USERSPACE
 	  Otherwise, the governor does not change the frequnecy
 	  given at the initialization.
 
+config DEVFREQ_GOV_VANS
+	bool "Vans"
+	help
+	  Sets the frequency at the minimum available frequency when earlysuspend.
+
 comment "DEVFREQ Drivers"
 
 config ARM_EXYNOS4_BUS_DEVFREQ
@@ -77,5 +82,23 @@ config ARM_EXYNOS4_BUS_DEVFREQ
 	  the operating frequencies and voltages with OPP support.
 	  To operate with optimal voltages, ASV support is required
 	  (CONFIG_EXYNOS_ASV).
+
+config DEVFREQ_DRAM_FREQ
+	bool "DRAM Frequency scaling"
+	depends on ARCH_SUNXI && DEVFREQ_GOV_VANS
+	help
+	  DRAM Frequency scaling allows you to change the clock speed of
+	  DRAM on the fly. This is a nice method to save power, because
+	  the lower the DRAM clock speed, the less power the DRAM consumes.
+
+	  If in doubt, say N.
+
+config DRAM_FREQ_DVFS
+	bool "Dram work voltage change with frequency"
+	depends on AW_AXP && DEVFREQ_DRAM_FREQ
+	help
+	  This will allow dram work voltage dynamic changed when the frequency is changed.
+
+	  If in doubt, say N.
 
 endif # PM_DEVFREQ

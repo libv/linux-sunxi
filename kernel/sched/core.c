@@ -2095,6 +2095,31 @@ context_switch(struct rq *rq, struct task_struct *prev,
 	finish_task_switch(this_rq(), prev);
 }
 
+#ifdef CONFIG_CPU_FREQ_GOV_FANTASYS
+
+#define NR_RUNNING_AVG_BITSHIFT     (5)
+#define NR_RUNNING_MULT_VAL(x)      ((x<<10)-(x<<4)-(x<<3))
+static DEFINE_SPINLOCK(nr_running_avg_lock);
+static DEFINE_PER_CPU_SHARED_ALIGNED(int, nr_running_avg_val);
+
+static void cal_nr_running_avg(struct rq *rq)
+{
+    int             avg;
+    unsigned long   flags;
+
+    spin_lock_irqsave(&nr_running_avg_lock, flags);
+    /* calculate average value for cpu n */
+    avg = per_cpu(nr_running_avg_val, rq->cpu)<<NR_RUNNING_AVG_BITSHIFT;
+    avg -= per_cpu(nr_running_avg_val, rq->cpu);
+    avg += NR_RUNNING_MULT_VAL(rq->nr_running);
+    avg >>= NR_RUNNING_AVG_BITSHIFT;
+    per_cpu(nr_running_avg_val, rq->cpu) = avg;
+
+    spin_unlock_irqrestore(&nr_running_avg_lock, flags);
+}
+
+#endif  /* #ifdef CONFIG_CPU_FREQ_GOV_FANTASYS */
+
 /*
  * nr_running, nr_uninterruptible and nr_context_switches:
  *
@@ -2111,6 +2136,36 @@ unsigned long nr_running(void)
 
 	return sum;
 }
+
+#ifdef CONFIG_CPU_FREQ_GOV_FANTASYS
+unsigned long nr_running_avg(void)
+{
+    int             cpu, avg = 0;
+    unsigned long   flags;
+
+    spin_lock_irqsave(&nr_running_avg_lock, flags);
+    /* calculate on line cpus' rq loading */
+    for_each_online_cpu(cpu) {
+        avg += per_cpu(nr_running_avg_val, cpu);
+    }
+    spin_unlock_irqrestore(&nr_running_avg_lock, flags);
+
+    return avg;
+}
+EXPORT_SYMBOL_GPL(nr_running_avg);
+#endif
+
+#ifdef CONFIG_CPU_FREQ_GOV_FANTASYS
+unsigned long nr_running_avg_cpu(int cpu)
+{
+    if (!cpu_online(cpu)) {
+        per_cpu(nr_running_avg_val, cpu) = 0;
+    }
+
+    return per_cpu(nr_running_avg_val, cpu);
+}
+EXPORT_SYMBOL_GPL(nr_running_avg_cpu);
+#endif
 
 unsigned long nr_uninterruptible(void)
 {
@@ -2656,6 +2711,15 @@ void update_cpu_load(struct rq *this_rq)
 	}
 
 	sched_avg_update(this_rq);
+
+#ifdef CONFIG_CPU_FREQ_GOV_FANTASYS
+    pending_updates--;
+    while(pending_updates--) {
+        cal_nr_running_avg(this_rq);
+    }
+    cal_nr_running_avg(this_rq);
+#endif
+
 }
 
 static void update_cpu_load_active(struct rq *this_rq)

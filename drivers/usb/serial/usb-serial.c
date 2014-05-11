@@ -1152,6 +1152,105 @@ void usb_serial_disconnect(struct usb_interface *interface)
 }
 EXPORT_SYMBOL_GPL(usb_serial_disconnect);
 
+#if defined(CONFIG_SW_3G_SLEEP_BY_USB_WAKEUP_BY_USB) || defined(CONFIG_SW_3G_SLEEP_BY_USB_WAKEUP_BY_GPIO)
+
+#include  <linux/usb/ch9.h>
+#include  <linux/usb/ch11.h>
+
+static int g_remote_wakeup = 0;
+
+static int serial_remote_wakeup(struct usb_device *udev, u32 suspend)
+{
+	struct usb_device *hdev = NULL;
+    struct usb_port_status data;
+    int status = 0;
+	int port1 = 0;
+
+    printk("serial_suspend_resume: %s\n", suspend ? "suspend" : "resume");
+
+    if(!udev->parent){
+        port1 = 1;
+        hdev = udev;
+    }else{
+        port1 = udev->portnum;
+        hdev = udev->parent;
+    }
+
+    if(suspend){
+		if(g_remote_wakeup){
+			return 0;
+		}
+
+        printk("serial_suspend_resume: set remote wakeup\n");
+
+		g_remote_wakeup = 1;
+
+#ifndef  CONFIG_SPREADWIN_G3
+        /* set remote wakeup */
+        status = usb_control_msg(udev, usb_sndctrlpipe(udev, 0),
+				USB_REQ_SET_FEATURE, USB_RECIP_DEVICE,
+				USB_DEVICE_REMOTE_WAKEUP, 0,
+				NULL, 0,
+				USB_CTRL_SET_TIMEOUT);
+		if(status){
+		    printk("err: set remote wakeup failed, status=%d\n", status);
+		    return -1;
+		}
+#endif
+
+        /* suspend */
+		status = usb_control_msg(hdev, usb_sndctrlpipe(hdev, 0),
+		        USB_REQ_SET_FEATURE, USB_RT_PORT,
+		        USB_PORT_FEAT_SUSPEND, port1,
+		        NULL, 0, 1000);
+		if(status){
+		    printk("err: suspend port failed, status=%d\n", status);
+		    return -1;
+		}
+
+    }else{
+		if(!g_remote_wakeup){
+			return 0;
+		}
+
+        printk("serial_suspend_resume: clear remote wakeup\n");
+
+		g_remote_wakeup = 0;
+
+        /* resume */
+        status = usb_control_msg(hdev, usb_sndctrlpipe(hdev, 0),
+		        USB_REQ_CLEAR_FEATURE, USB_RT_PORT,
+		        USB_PORT_FEAT_SUSPEND, port1,
+		        NULL, 0, 1000);
+		if(status){
+		    printk("err: resume port failed, status=%d\n", status);
+		    return -1;
+		}
+
+        /* resume complete */
+		status = usb_control_msg(hdev, usb_rcvctrlpipe(hdev, 0),
+			    USB_REQ_GET_STATUS, USB_DIR_IN | USB_RT_PORT, 0, port1,
+			    &data, sizeof(struct usb_port_status), 1000);
+
+#ifndef  CONFIG_SPREADWIN_G3
+        /* clear remote wakeup */
+        status = usb_control_msg(udev, usb_sndctrlpipe(udev, 0),
+                USB_REQ_CLEAR_FEATURE, USB_RECIP_DEVICE,
+                USB_DEVICE_REMOTE_WAKEUP, 0,
+                NULL, 0,
+                USB_CTRL_SET_TIMEOUT);
+        if(status){
+		    printk("err: clear remote wakeup failed, status=%d\n", status);
+		    return -1;
+		}
+#endif
+    }
+
+	return 0;
+}
+
+#endif
+
 int usb_serial_suspend(struct usb_interface *intf, pm_message_t message)
 {
 	struct usb_serial *serial = usb_get_intfdata(intf);
@@ -1174,6 +1273,10 @@ int usb_serial_suspend(struct usb_interface *intf, pm_message_t message)
 			kill_traffic(port);
 	}
 
+#if defined(CONFIG_SW_3G_SLEEP_BY_USB_WAKEUP_BY_USB) || defined(CONFIG_SW_3G_SLEEP_BY_USB_WAKEUP_BY_GPIO)
+    serial_remote_wakeup(interface_to_usbdev(intf), 1);
+#endif
+
 err_out:
 	return r;
 }
@@ -1183,6 +1286,9 @@ int usb_serial_resume(struct usb_interface *intf)
 {
 	struct usb_serial *serial = usb_get_intfdata(intf);
 	int rv;
+#if defined(CONFIG_SW_3G_SLEEP_BY_USB_WAKEUP_BY_USB) || defined(CONFIG_SW_3G_SLEEP_BY_USB_WAKEUP_BY_GPIO)
+    serial_remote_wakeup(interface_to_usbdev(intf), 0);
+#endif
 
 	serial->suspending = 0;
 	if (serial->type->resume)

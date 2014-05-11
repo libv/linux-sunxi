@@ -191,11 +191,11 @@ config DMA_SHARED_BUFFER
 	  multiple drivers. A buffer is associated with a file using driver
 	  APIs extension; the file's descriptor can then be passed on to other
 	  driver.
-
 config CMA
-	bool "Contiguous Memory Allocator (EXPERIMENTAL)"
-	depends on HAVE_DMA_CONTIGUOUS && HAVE_MEMBLOCK && EXPERIMENTAL
+	bool "Contiguous Memory Allocator"
+	depends on HAVE_DMA_CONTIGUOUS && HAVE_MEMBLOCK
 	select MIGRATION
+	select MEMORY_ISOLATION
 	help
 	  This enables the Contiguous Memory Allocator which allows drivers
 	  to allocate big physically-contiguous blocks of memory for use with
@@ -224,6 +224,15 @@ config CMA_SIZE_MBYTES
 	help
 	  Defines the size (in MiB) of the default memory area for Contiguous
 	  Memory Allocator.
+
+config CMA_RESERVE_BASE
+	hex "Base phys mem addr reserved for CMA"
+	depends on ARCH_SUNXI && CMA
+	default 0x43400000
+	help
+	  Defines the base physical memory address(in MiB) of the reserved area for Contiguous
+	  Memory Allocator.
+	  The base addr should be 4M aligned; if not, the kernel will chose the next 4M alignment as the actual base.
 
 config CMA_SIZE_PERCENTAGE
 	int "Percentage of total memory"

@@ -3,29 +3,11 @@ menuconfig PWM
 	help
 	  Generic Pulse-Width Modulation (PWM) support.
 
-	  In Pulse-Width Modulation, a variation of the width of pulses
-	  in a rectangular pulse signal is used as a means to alter the
-	  average power of the signal. Applications include efficient
-	  power delivery and voltage regulation. In computer systems,
-	  PWMs are commonly used to control fans or the brightness of
-	  display backlights.
+config PWM_SUNXI
+	tristate "sunxi pwm support"
+	depends on PWM
+	help
+		Generic PWM framework driver for sunxi.
 
-	  This framework provides a generic interface to PWM devices
-	  within the Linux kernel. On the driver side it provides an API
-	  to register and unregister a PWM chip, an abstraction of a PWM
-	  controller, that supports one or more PWM devices. Client
-	  drivers can request PWM devices and use the generic framework
-	  to configure as well as enable and disable them.
-
-	  This generic framework replaces the legacy PWM framework which
-	  allows only a single driver implementing the required API. Not
-	  all legacy implementations have been ported to the framework
-	  yet. The framework provides an API that is backward compatible
-	  with the legacy framework so that existing client drivers
-	  continue to work as expected.
-
-	  If unsure, say no.
-
-if PWM
-
-endif
+		To compile this driver as a moudle, choose M here: the module
+		will be called pwm-sunxi

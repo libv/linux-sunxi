@@ -486,65 +486,8 @@ static struct pwm_chip *of_node_to_pwmchip(struct device_node *np)
  * becomes mandatory for devices that look up the PWM device via the con_id
  * parameter.
  */
-static struct pwm_device *of_pwm_request(struct device_node *np,
-					 const char *con_id)
-{
-	struct pwm_device *pwm = NULL;
-	struct of_phandle_args args;
-	struct pwm_chip *pc;
-	int index = 0;
-	int err;
 
-	if (con_id) {
-		index = of_property_match_string(np, "pwm-names", con_id);
-		if (index < 0)
-			return ERR_PTR(index);
-	}
-
-	err = of_parse_phandle_with_args(np, "pwms", "#pwm-cells", index,
-					 &args);
-	if (err) {
-		pr_debug("%s(): can't parse \"pwms\" property\n", __func__);
-		return ERR_PTR(err);
-	}
-
-	pc = of_node_to_pwmchip(args.np);
-	if (IS_ERR(pc)) {
-		pr_debug("%s(): PWM chip not found\n", __func__);
-		pwm = ERR_CAST(pc);
-		goto put;
-	}
-
-	if (args.args_count != pc->of_pwm_n_cells) {
-		pr_debug("%s: wrong #pwm-cells for %s\n", np->full_name,
-			 args.np->full_name);
-		pwm = ERR_PTR(-EINVAL);
-		goto put;
-	}
-
-	pwm = pc->of_xlate(pc, &args);
-	if (IS_ERR(pwm))
-		goto put;
-
-	/*
-	 * If a consumer name was not given, try to look it up from the
-	 * "pwm-names" property if it exists. Otherwise use the name of
-	 * the user device node.
-	 */
-	if (!con_id) {
-		err = of_property_read_string_index(np, "pwm-names", index,
-						    &con_id);
-		if (err < 0)
-			con_id = np->name;
-	}
-
-	pwm->label = con_id;
-
-put:
-	of_node_put(args.np);
-
-	return pwm;
-}
+ //delete the function of_pwm_request
 
 /**
  * pwm_add_table() - register PWM device consumers
@@ -587,7 +530,8 @@ struct pwm_device *pwm_get(struct device *dev, const char *con_id)
 
 	/* look up via DT first */
 	if (IS_ENABLED(CONFIG_OF) && dev && dev->of_node)
-		return of_pwm_request(dev->of_node, con_id);
+//		return of_pwm_request(dev->of_node, con_id);
+			return NULL;
 
 	/*
 	 * We look up the provider in the static table typically provided by

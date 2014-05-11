@@ -1,0 +1,8 @@
+#
+# sunxi pinctrl test configuration.
+#
+config SUNXI_PINCTRL_TEST
+	tristate "sunxi pinctrl test driver"
+	default m
+	help
+	  Nothing help.

@@ -282,7 +282,7 @@ static long rtc_dev_ioctl(struct file *file,
 		if (copy_from_user(&alarm.time, uarg, sizeof(tm)))
 			return -EFAULT;
 
-		alarm.enabled = 0;
+		alarm.enabled = 1;
 		alarm.pending = 0;
 		alarm.time.tm_wday = -1;
 		alarm.time.tm_yday = -1;

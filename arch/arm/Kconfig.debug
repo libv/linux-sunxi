@@ -294,6 +294,19 @@ choice
 		  The uncompressor code port configuration is now handled
 		  by CONFIG_S3C_LOWLEVEL_UART_PORT.
 
+	config DEBUG_SUNXI_UART0
+		bool "Kernel low-level debugging messages via sunXi UART0"
+		depends on ARCH_SUNXI
+		help
+		  Say Y here if you want kernel low-level debugging support
+		  on Allwinner A1X based platforms on the UART0.
+
+	config DEBUG_SUNXI_UART1
+		bool "Kernel low-level debugging messages via sunXi UART1"
+		depends on ARCH_SUNXI
+		help
+		  Say Y here if you want kernel low-level debugging support
+		  on Allwinner A1X based platforms on the UART1.
 	config DEBUG_LL_UART_NONE
 		bool "No low-level debugging UART"
 		help
@@ -328,6 +341,22 @@ choice
 
 		  For more details about semihosting, please see
 		  chapter 8 of DUI0203I_rvct_developer_guide.pdf from ARM Ltd.
+
+	config DEBUG_VEXPRESS_CA9X4_UART
+		bool "Kernel low-level debugging messages via CA9X4 UART"
+		depends on ARCH_VEXPRESS_CA9X4
+		help
+		  Say Y here if you want the debug print routines to direct
+		  their output to UART0 of the Versatile Express motherboards
+		  that pre-date the RS1 memory map.
+
+	config DEBUG_VEXPRESS_RS1_UART
+		bool "Kernel low-level debugging messages via RS1 UART"
+		depends on ARCH_VEXPRESS_DT
+		help
+		  Say Y here if you want the debug print routines to direct
+		  their output to UART0 of the Versatile Express motherboards
+		  with the RS1 memory map.
 
 endchoice
 

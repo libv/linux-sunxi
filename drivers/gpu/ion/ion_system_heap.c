@@ -380,8 +380,16 @@ static int ion_system_contig_heap_allocate(struct ion_heap *heap,
 					   unsigned long flags)
 {
 	buffer->priv_virt = kzalloc(len, GFP_KERNEL);
-	if (!buffer->priv_virt)
+	if (!buffer->priv_virt) {
+		pr_err("%s(%d) err: alloc 0x%08x bytes failed\n", __func__, __LINE__, (u32)len);
 		return -ENOMEM;
+	}
+	/*
+	 * kzalloc is with cache, so the physical memory of buffer->priv_virt is not all 0,
+	 * which may lead to stripe when gpu use it;
+	 * so we clean cache(write back) immediate after kzalloc, which actually set phys mem to 0;
+	 */
+	dma_sync_single_for_device(NULL, (dma_addr_t)virt_to_phys(buffer->priv_virt), len, DMA_TO_DEVICE);
 	return 0;
 }
 

@@ -344,11 +344,48 @@ static void __init cacheid_init(void)
  */
 extern struct proc_info_list *lookup_processor_type(unsigned int);
 
+#ifndef CONFIG_EVB_PLATFORM
+#include <linux/io.h>
+#include <mach/platform.h>
+
+bool first_print = true;
+int __init  uart_init(void)
+{
+#define SUART_BAUDRATE	115200
+	u32 p2clk;
+	u32 df;
+	u32 lcr;
+
+	/* set baudrate */
+	p2clk = 24000000;
+	df = (p2clk + (SUART_BAUDRATE<<3))/(SUART_BAUDRATE<<4);
+	lcr = readl((volatile void *)(SUNXI_UART0_VBASE + SUNXI_UART_LCR));
+	writel(1, (volatile void *)(SUNXI_UART0_VBASE + SUNXI_UART_HALT));
+	writel(lcr|0x80, (volatile void *)(SUNXI_UART0_VBASE + SUNXI_UART_LCR));
+	writel(df>>8, (volatile void *)(SUNXI_UART0_VBASE + SUNXI_UART_DLH));
+	writel(df&0xff, (volatile void *)(SUNXI_UART0_VBASE + SUNXI_UART_DLL));
+	writel(lcr&(~0x80), (volatile void *)(SUNXI_UART0_VBASE + SUNXI_UART_LCR));
+	writel(0, (volatile void *)(SUNXI_UART0_VBASE + SUNXI_UART_HALT));
+	/* set mode */
+	writel(3, (volatile void *)(SUNXI_UART0_VBASE + SUNXI_UART_LCR));
+	/* enable fifo */
+	writel(7, (volatile void *)(SUNXI_UART0_VBASE + SUNXI_UART_FCR));
+	return 0;
+}
+#endif
+
 void __init early_print(const char *str, ...)
 {
 	extern void printascii(const char *);
 	char buf[256];
 	va_list ap;
+
+#ifndef CONFIG_EVB_PLATFORM
+	if(first_print) {
+		first_print = false;
+		uart_init();
+	}
+#endif
 
 	va_start(ap, str);
 	vsnprintf(buf, sizeof(buf), str, ap);
@@ -1046,9 +1083,23 @@ static const char *hwcap_str[] = {
 	NULL
 };
 
+#if defined(CONFIG_ARCH_SUNXI)
+extern int get_chip_id(uint8_t *chip_id);
+#endif
+#if defined(CONFIG_ARCH_SUNXI)
+extern int get_chip_id2(uint32_t *chip_id);
+#endif
 static int c_show(struct seq_file *m, void *v)
 {
 	int i;
+
+#if defined(CONFIG_ARCH_SUNXI)
+	uint32_t chipid[4];
+	int ret;
+	
+	memset(chipid, 0, sizeof(chipid));
+	ret = get_chip_id2(chipid);
+#endif
 
 	seq_printf(m, "Processor\t: %s rev %d (%s)\n",
 		   cpu_name, read_cpuid_id() & 15, elf_platform);
@@ -1103,8 +1154,13 @@ static int c_show(struct seq_file *m, void *v)
 
 	seq_printf(m, "Hardware\t: %s\n", machine_name);
 	seq_printf(m, "Revision\t: %04x\n", system_rev);
+#if defined(CONFIG_ARCH_SUNXI)
+	seq_printf(m, "Serial\t\t: %03x%08x%08x\n",
+		   chipid[2], chipid[1], chipid[0]);
+#else
 	seq_printf(m, "Serial\t\t: %08x%08x\n",
 		   system_serial_high, system_serial_low);
+#endif
 
 	return 0;
 }
@@ -1130,3 +1186,9 @@ const struct seq_operations cpuinfo_op = {
 	.stop	= c_stop,
 	.show	= c_show
 };
+
+#ifndef MULTI_CACHE
+EXPORT_SYMBOL(__glue(_CACHE,_dma_map_area));
+EXPORT_SYMBOL(__glue(_CACHE,_dma_unmap_area));
+EXPORT_SYMBOL(__glue(_CACHE,_dma_flush_range));
+#endif
