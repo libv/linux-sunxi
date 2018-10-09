@@ -48,6 +48,7 @@
 
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/pwm/pwm.h>
 
 / {
 	model = "LeMaker Banana Pi";
@@ -61,6 +62,57 @@
 
 	chosen {
 		stdout-path = "serial0:115200n8";
+	};
+
+
+	backlight: backlight {
+		compatible = "pwm-backlight";
+		pwms = <&pwm 0 50000 0>;
+		/* This table uses a gamma curve with a 1.8 power. */
+		brightness-levels = <  0   1   1   1   1   1   2   2
+				       3   3   4   5   6   6   7   8
+				       9  11  12  13  14  15  17  18
+				      20  21  23  24  26  27  29  31
+				      33  35  37  39  41  43  45  47
+				      49  51  54  56  58  61  63  66
+				      68  71  73  76  79  81  84  87
+				      90  93  96  99 102 105 108 111
+				     114 117 121 124 127 131 134 138
+				     141 145 148 152 156 159 163 167
+				     171 175 178 182 186 190 194 198
+				     203 207 211 215 219 224 228 233
+				     237 241 246 250 255>;
+		default-brightness-level = <50>;
+		enable-gpios = <&pio 7 8 GPIO_ACTIVE_HIGH>; /* PH8 */
+	};
+
+	panel: panel {
+		compatible = "lemaker,bl035-rgb-002";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		power-supply = <&panel_power>;
+		backlight = <&backlight>;
+
+		port@0 {
+			reg = <0>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			panel_input: endpoint@0 {
+				reg = <0>;
+				remote-endpoint = <&tcon0_out_panel>;
+			};
+		};
+	};
+
+	panel_power: panel_power {
+		compatible = "regulator-fixed";
+		regulator-name = "panel-power";
+		regulator-min-microvolt = <10400000>;
+		regulator-max-microvolt = <10400000>;
+		gpio = <&pio 7 12 GPIO_ACTIVE_HIGH>; /* PH12 */
+		enable-active-high;
+		regulator-boot-on;
 	};
 
 	hdmi-connector {
@@ -254,6 +306,12 @@
 	};
 };
 
+&pwm {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pwm0_pin>;
+	status = "okay";
+};
+
 #include "axp209.dtsi"
 
 &reg_dcdc2 {
@@ -299,6 +357,19 @@
 		    <&spi0_cs0_pi_pin>,
 		    <&spi0_cs1_pi_pin>;
 	status = "okay";
+};
+
+&tcon0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&lcd0_rgb888_pins>;
+	status = "okay";
+};
+
+&tcon0_out {
+	tcon0_out_panel: endpoint@0 {
+		reg = <0>;
+		remote-endpoint = <&panel_input>;
+	};
 };
 
 &uart0 {
