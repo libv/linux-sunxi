@@ -1383,44 +1383,37 @@ static int ov5640_set_vts(struct ov5640_dev *sensor, int vts)
 	return ov5640_write16(sensor, OV5640_REG_TIMING_VTS, vts);
 }
 
+/*
+ * Get banding filter value.
+ */
 static int ov5640_get_light_freq(struct ov5640_dev *sensor)
 {
-	/* get banding filter value */
-	int ret, light_freq = 0;
+	int ret;
 	u8 temp, temp1;
 
 	ret = ov5640_read(sensor, OV5640_REG_HZ5060_CTRL01, &temp);
 	if (ret)
 		return ret;
 
-	if (temp & 0x80) {
-		/* manual */
+	if (temp & 0x80) { /* manual */
 		ret = ov5640_read(sensor, OV5640_REG_HZ5060_CTRL00, &temp1);
 		if (ret)
 			return ret;
-		if (temp1 & 0x04) {
-			/* 50Hz */
-			light_freq = 50;
-		} else {
-			/* 60Hz */
-			light_freq = 60;
-		}
-	} else {
-		/* auto */
+		if (temp1 & 0x04)
+			return 50;
+		else
+			return 60;
+	} else { /* auto */
 		ret = ov5640_read(sensor, OV5640_REG_SIGMADELTA_CTRL0C,
 				  &temp1);
 		if (ret)
 			return ret;
 
-		if (temp1 & 0x01) {
-			/* 50Hz */
-			light_freq = 50;
-		} else {
-			/* 60Hz */
-		}
+		if (temp1 & 0x01)
+			return 50;
+		else
+			return 60;
 	}
-
-	return light_freq;
 }
 
 static int ov5640_set_bandingfilter(struct ov5640_dev *sensor)
