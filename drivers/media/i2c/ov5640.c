@@ -116,12 +116,7 @@ enum ov5640_downsize_mode {
 	SCALING,
 };
 
-struct reg_value {
-	u16 reg_addr;
-	u8 val;
-	u8 mask;
-	u32 delay_ms;
-};
+struct ov5640_dev;
 
 struct ov5640_mode_info {
 	enum ov5640_mode_id id;
@@ -130,8 +125,7 @@ struct ov5640_mode_info {
 	u32 htot;
 	u32 vact;
 	u32 vtot;
-	const struct reg_value *reg_data;
-	u32 reg_data_size;
+	int (*setup)(struct ov5640_dev *sensor);
 };
 
 struct ov5640_ctrls {
@@ -204,330 +198,6 @@ static inline struct v4l2_subdev *ctrl_to_sd(struct v4l2_ctrl *ctrl)
 	return &container_of(ctrl->handler, struct ov5640_dev,
 			     ctrls.handler)->sd;
 }
-
-/*
- * FIXME: all of these register tables are likely filled with
- * entries that set the register to their power-on default values,
- * and which are otherwise not touched by this driver. Those entries
- * should be identified and removed to speed register load time
- * over i2c.
- */
-/* YUV422 UYVY VGA@30fps */
-static const struct reg_value ov5640_init_setting_30fps_VGA[] = {
-	{0x3103, 0x11, 0, 0}, {0x3008, 0x82, 0, 5}, {0x3008, 0x42, 0, 0},
-	{0x3103, 0x03, 0, 0}, {0x3017, 0x00, 0, 0}, {0x3018, 0x00, 0, 0},
-	{0x3630, 0x36, 0, 0},
-	{0x3631, 0x0e, 0, 0}, {0x3632, 0xe2, 0, 0}, {0x3633, 0x12, 0, 0},
-	{0x3621, 0xe0, 0, 0}, {0x3704, 0xa0, 0, 0}, {0x3703, 0x5a, 0, 0},
-	{0x3715, 0x78, 0, 0}, {0x3717, 0x01, 0, 0}, {0x370b, 0x60, 0, 0},
-	{0x3705, 0x1a, 0, 0}, {0x3905, 0x02, 0, 0}, {0x3906, 0x10, 0, 0},
-	{0x3901, 0x0a, 0, 0}, {0x3731, 0x12, 0, 0}, {0x3600, 0x08, 0, 0},
-	{0x3601, 0x33, 0, 0}, {0x302d, 0x60, 0, 0}, {0x3620, 0x52, 0, 0},
-	{0x371b, 0x20, 0, 0}, {0x471c, 0x50, 0, 0}, {0x3a13, 0x43, 0, 0},
-	{0x3a18, 0x00, 0, 0}, {0x3a19, 0xf8, 0, 0}, {0x3635, 0x13, 0, 0},
-	{0x3636, 0x03, 0, 0}, {0x3634, 0x40, 0, 0}, {0x3622, 0x01, 0, 0},
-	{0x3c01, 0xa4, 0, 0}, {0x3c04, 0x28, 0, 0}, {0x3c05, 0x98, 0, 0},
-	{0x3c06, 0x00, 0, 0}, {0x3c07, 0x08, 0, 0}, {0x3c08, 0x00, 0, 0},
-	{0x3c09, 0x1c, 0, 0}, {0x3c0a, 0x9c, 0, 0}, {0x3c0b, 0x40, 0, 0},
-	{0x3820, 0x41, 0, 0}, {0x3821, 0x07, 0, 0}, {0x3814, 0x31, 0, 0},
-	{0x3815, 0x31, 0, 0}, {0x3800, 0x00, 0, 0}, {0x3801, 0x00, 0, 0},
-	{0x3802, 0x00, 0, 0}, {0x3803, 0x04, 0, 0}, {0x3804, 0x0a, 0, 0},
-	{0x3805, 0x3f, 0, 0}, {0x3806, 0x07, 0, 0}, {0x3807, 0x9b, 0, 0},
-	{0x3810, 0x00, 0, 0},
-	{0x3811, 0x10, 0, 0}, {0x3812, 0x00, 0, 0}, {0x3813, 0x06, 0, 0},
-	{0x3618, 0x00, 0, 0}, {0x3612, 0x29, 0, 0}, {0x3708, 0x64, 0, 0},
-	{0x3709, 0x52, 0, 0}, {0x370c, 0x03, 0, 0}, {0x3a02, 0x03, 0, 0},
-	{0x3a03, 0xd8, 0, 0}, {0x3a08, 0x01, 0, 0}, {0x3a09, 0x27, 0, 0},
-	{0x3a0a, 0x00, 0, 0}, {0x3a0b, 0xf6, 0, 0}, {0x3a0e, 0x03, 0, 0},
-	{0x3a0d, 0x04, 0, 0}, {0x3a14, 0x03, 0, 0}, {0x3a15, 0xd8, 0, 0},
-	{0x4001, 0x02, 0, 0}, {0x4004, 0x02, 0, 0}, {0x3000, 0x00, 0, 0},
-	{0x3002, 0x1c, 0, 0}, {0x3004, 0xff, 0, 0}, {0x3006, 0xc3, 0, 0},
-	{0x302e, 0x08, 0, 0}, {0x4300, 0x3f, 0, 0},
-	{0x501f, 0x00, 0, 0}, {0x4407, 0x04, 0, 0},
-	{0x440e, 0x00, 0, 0}, {0x460b, 0x35, 0, 0}, {0x460c, 0x22, 0, 0},
-	{0x4837, 0x0a, 0, 0}, {0x3824, 0x02, 0, 0},
-	{0x5000, 0xa7, 0, 0}, {0x5001, 0xa3, 0, 0}, {0x5180, 0xff, 0, 0},
-	{0x5181, 0xf2, 0, 0}, {0x5182, 0x00, 0, 0}, {0x5183, 0x14, 0, 0},
-	{0x5184, 0x25, 0, 0}, {0x5185, 0x24, 0, 0}, {0x5186, 0x09, 0, 0},
-	{0x5187, 0x09, 0, 0}, {0x5188, 0x09, 0, 0}, {0x5189, 0x88, 0, 0},
-	{0x518a, 0x54, 0, 0}, {0x518b, 0xee, 0, 0}, {0x518c, 0xb2, 0, 0},
-	{0x518d, 0x50, 0, 0}, {0x518e, 0x34, 0, 0}, {0x518f, 0x6b, 0, 0},
-	{0x5190, 0x46, 0, 0}, {0x5191, 0xf8, 0, 0}, {0x5192, 0x04, 0, 0},
-	{0x5193, 0x70, 0, 0}, {0x5194, 0xf0, 0, 0}, {0x5195, 0xf0, 0, 0},
-	{0x5196, 0x03, 0, 0}, {0x5197, 0x01, 0, 0}, {0x5198, 0x04, 0, 0},
-	{0x5199, 0x6c, 0, 0}, {0x519a, 0x04, 0, 0}, {0x519b, 0x00, 0, 0},
-	{0x519c, 0x09, 0, 0}, {0x519d, 0x2b, 0, 0}, {0x519e, 0x38, 0, 0},
-	{0x5381, 0x1e, 0, 0}, {0x5382, 0x5b, 0, 0}, {0x5383, 0x08, 0, 0},
-	{0x5384, 0x0a, 0, 0}, {0x5385, 0x7e, 0, 0}, {0x5386, 0x88, 0, 0},
-	{0x5387, 0x7c, 0, 0}, {0x5388, 0x6c, 0, 0}, {0x5389, 0x10, 0, 0},
-	{0x538a, 0x01, 0, 0}, {0x538b, 0x98, 0, 0}, {0x5300, 0x08, 0, 0},
-	{0x5301, 0x30, 0, 0}, {0x5302, 0x10, 0, 0}, {0x5303, 0x00, 0, 0},
-	{0x5304, 0x08, 0, 0}, {0x5305, 0x30, 0, 0}, {0x5306, 0x08, 0, 0},
-	{0x5307, 0x16, 0, 0}, {0x5309, 0x08, 0, 0}, {0x530a, 0x30, 0, 0},
-	{0x530b, 0x04, 0, 0}, {0x530c, 0x06, 0, 0}, {0x5480, 0x01, 0, 0},
-	{0x5481, 0x08, 0, 0}, {0x5482, 0x14, 0, 0}, {0x5483, 0x28, 0, 0},
-	{0x5484, 0x51, 0, 0}, {0x5485, 0x65, 0, 0}, {0x5486, 0x71, 0, 0},
-	{0x5487, 0x7d, 0, 0}, {0x5488, 0x87, 0, 0}, {0x5489, 0x91, 0, 0},
-	{0x548a, 0x9a, 0, 0}, {0x548b, 0xaa, 0, 0}, {0x548c, 0xb8, 0, 0},
-	{0x548d, 0xcd, 0, 0}, {0x548e, 0xdd, 0, 0}, {0x548f, 0xea, 0, 0},
-	{0x5490, 0x1d, 0, 0}, {0x5580, 0x02, 0, 0}, {0x5583, 0x40, 0, 0},
-	{0x5584, 0x10, 0, 0}, {0x5589, 0x10, 0, 0}, {0x558a, 0x00, 0, 0},
-	{0x558b, 0xf8, 0, 0}, {0x5800, 0x23, 0, 0}, {0x5801, 0x14, 0, 0},
-	{0x5802, 0x0f, 0, 0}, {0x5803, 0x0f, 0, 0}, {0x5804, 0x12, 0, 0},
-	{0x5805, 0x26, 0, 0}, {0x5806, 0x0c, 0, 0}, {0x5807, 0x08, 0, 0},
-	{0x5808, 0x05, 0, 0}, {0x5809, 0x05, 0, 0}, {0x580a, 0x08, 0, 0},
-	{0x580b, 0x0d, 0, 0}, {0x580c, 0x08, 0, 0}, {0x580d, 0x03, 0, 0},
-	{0x580e, 0x00, 0, 0}, {0x580f, 0x00, 0, 0}, {0x5810, 0x03, 0, 0},
-	{0x5811, 0x09, 0, 0}, {0x5812, 0x07, 0, 0}, {0x5813, 0x03, 0, 0},
-	{0x5814, 0x00, 0, 0}, {0x5815, 0x01, 0, 0}, {0x5816, 0x03, 0, 0},
-	{0x5817, 0x08, 0, 0}, {0x5818, 0x0d, 0, 0}, {0x5819, 0x08, 0, 0},
-	{0x581a, 0x05, 0, 0}, {0x581b, 0x06, 0, 0}, {0x581c, 0x08, 0, 0},
-	{0x581d, 0x0e, 0, 0}, {0x581e, 0x29, 0, 0}, {0x581f, 0x17, 0, 0},
-	{0x5820, 0x11, 0, 0}, {0x5821, 0x11, 0, 0}, {0x5822, 0x15, 0, 0},
-	{0x5823, 0x28, 0, 0}, {0x5824, 0x46, 0, 0}, {0x5825, 0x26, 0, 0},
-	{0x5826, 0x08, 0, 0}, {0x5827, 0x26, 0, 0}, {0x5828, 0x64, 0, 0},
-	{0x5829, 0x26, 0, 0}, {0x582a, 0x24, 0, 0}, {0x582b, 0x22, 0, 0},
-	{0x582c, 0x24, 0, 0}, {0x582d, 0x24, 0, 0}, {0x582e, 0x06, 0, 0},
-	{0x582f, 0x22, 0, 0}, {0x5830, 0x40, 0, 0}, {0x5831, 0x42, 0, 0},
-	{0x5832, 0x24, 0, 0}, {0x5833, 0x26, 0, 0}, {0x5834, 0x24, 0, 0},
-	{0x5835, 0x22, 0, 0}, {0x5836, 0x22, 0, 0}, {0x5837, 0x26, 0, 0},
-	{0x5838, 0x44, 0, 0}, {0x5839, 0x24, 0, 0}, {0x583a, 0x26, 0, 0},
-	{0x583b, 0x28, 0, 0}, {0x583c, 0x42, 0, 0}, {0x583d, 0xce, 0, 0},
-	{0x5025, 0x00, 0, 0}, {0x3a0f, 0x30, 0, 0}, {0x3a10, 0x28, 0, 0},
-	{0x3a1b, 0x30, 0, 0}, {0x3a1e, 0x26, 0, 0}, {0x3a11, 0x60, 0, 0},
-	{0x3a1f, 0x14, 0, 0}, {0x3008, 0x02, 0, 0}, {0x3c00, 0x04, 0, 300},
-};
-
-static const struct reg_value ov5640_setting_VGA_640_480[] = {
-	{0x3c07, 0x08, 0, 0},
-	{0x3c09, 0x1c, 0, 0}, {0x3c0a, 0x9c, 0, 0}, {0x3c0b, 0x40, 0, 0},
-	{0x3814, 0x31, 0, 0},
-	{0x3815, 0x31, 0, 0}, {0x3800, 0x00, 0, 0}, {0x3801, 0x00, 0, 0},
-	{0x3802, 0x00, 0, 0}, {0x3803, 0x04, 0, 0}, {0x3804, 0x0a, 0, 0},
-	{0x3805, 0x3f, 0, 0}, {0x3806, 0x07, 0, 0}, {0x3807, 0x9b, 0, 0},
-	{0x3810, 0x00, 0, 0},
-	{0x3811, 0x10, 0, 0}, {0x3812, 0x00, 0, 0}, {0x3813, 0x06, 0, 0},
-	{0x3618, 0x00, 0, 0}, {0x3612, 0x29, 0, 0}, {0x3708, 0x64, 0, 0},
-	{0x3709, 0x52, 0, 0}, {0x370c, 0x03, 0, 0}, {0x3a02, 0x03, 0, 0},
-	{0x3a03, 0xd8, 0, 0}, {0x3a08, 0x01, 0, 0}, {0x3a09, 0x27, 0, 0},
-	{0x3a0a, 0x00, 0, 0}, {0x3a0b, 0xf6, 0, 0}, {0x3a0e, 0x03, 0, 0},
-	{0x3a0d, 0x04, 0, 0}, {0x3a14, 0x03, 0, 0}, {0x3a15, 0xd8, 0, 0},
-	{0x4001, 0x02, 0, 0}, {0x4004, 0x02, 0, 0},
-	{0x4407, 0x04, 0, 0}, {0x460b, 0x35, 0, 0}, {0x460c, 0x22, 0, 0},
-	{0x3824, 0x02, 0, 0}, {0x5001, 0xa3, 0, 0},
-};
-
-static const struct reg_value ov5640_setting_XGA_1024_768[] = {
-	{0x3c07, 0x08, 0, 0},
-	{0x3c09, 0x1c, 0, 0}, {0x3c0a, 0x9c, 0, 0}, {0x3c0b, 0x40, 0, 0},
-	{0x3814, 0x31, 0, 0},
-	{0x3815, 0x31, 0, 0}, {0x3800, 0x00, 0, 0}, {0x3801, 0x00, 0, 0},
-	{0x3802, 0x00, 0, 0}, {0x3803, 0x04, 0, 0}, {0x3804, 0x0a, 0, 0},
-	{0x3805, 0x3f, 0, 0}, {0x3806, 0x07, 0, 0}, {0x3807, 0x9b, 0, 0},
-	{0x3810, 0x00, 0, 0},
-	{0x3811, 0x10, 0, 0}, {0x3812, 0x00, 0, 0}, {0x3813, 0x06, 0, 0},
-	{0x3618, 0x00, 0, 0}, {0x3612, 0x29, 0, 0}, {0x3708, 0x64, 0, 0},
-	{0x3709, 0x52, 0, 0}, {0x370c, 0x03, 0, 0}, {0x3a02, 0x03, 0, 0},
-	{0x3a03, 0xd8, 0, 0}, {0x3a08, 0x01, 0, 0}, {0x3a09, 0x27, 0, 0},
-	{0x3a0a, 0x00, 0, 0}, {0x3a0b, 0xf6, 0, 0}, {0x3a0e, 0x03, 0, 0},
-	{0x3a0d, 0x04, 0, 0}, {0x3a14, 0x03, 0, 0}, {0x3a15, 0xd8, 0, 0},
-	{0x4001, 0x02, 0, 0}, {0x4004, 0x02, 0, 0},
-	{0x4407, 0x04, 0, 0}, {0x460b, 0x35, 0, 0}, {0x460c, 0x22, 0, 0},
-	{0x3824, 0x02, 0, 0}, {0x5001, 0xa3, 0, 0},
-};
-
-static const struct reg_value ov5640_setting_QVGA_320_240[] = {
-	{0x3c07, 0x08, 0, 0},
-	{0x3c09, 0x1c, 0, 0}, {0x3c0a, 0x9c, 0, 0}, {0x3c0b, 0x40, 0, 0},
-	{0x3814, 0x31, 0, 0},
-	{0x3815, 0x31, 0, 0}, {0x3800, 0x00, 0, 0}, {0x3801, 0x00, 0, 0},
-	{0x3802, 0x00, 0, 0}, {0x3803, 0x04, 0, 0}, {0x3804, 0x0a, 0, 0},
-	{0x3805, 0x3f, 0, 0}, {0x3806, 0x07, 0, 0}, {0x3807, 0x9b, 0, 0},
-	{0x3810, 0x00, 0, 0},
-	{0x3811, 0x10, 0, 0}, {0x3812, 0x00, 0, 0}, {0x3813, 0x06, 0, 0},
-	{0x3618, 0x00, 0, 0}, {0x3612, 0x29, 0, 0}, {0x3708, 0x64, 0, 0},
-	{0x3709, 0x52, 0, 0}, {0x370c, 0x03, 0, 0}, {0x3a02, 0x03, 0, 0},
-	{0x3a03, 0xd8, 0, 0}, {0x3a08, 0x01, 0, 0}, {0x3a09, 0x27, 0, 0},
-	{0x3a0a, 0x00, 0, 0}, {0x3a0b, 0xf6, 0, 0}, {0x3a0e, 0x03, 0, 0},
-	{0x3a0d, 0x04, 0, 0}, {0x3a14, 0x03, 0, 0}, {0x3a15, 0xd8, 0, 0},
-	{0x4001, 0x02, 0, 0}, {0x4004, 0x02, 0, 0},
-	{0x4407, 0x04, 0, 0}, {0x460b, 0x35, 0, 0}, {0x460c, 0x22, 0, 0},
-	{0x3824, 0x02, 0, 0}, {0x5001, 0xa3, 0, 0},
-};
-
-static const struct reg_value ov5640_setting_QCIF_176_144[] = {
-	{0x3c07, 0x08, 0, 0},
-	{0x3c09, 0x1c, 0, 0}, {0x3c0a, 0x9c, 0, 0}, {0x3c0b, 0x40, 0, 0},
-	{0x3814, 0x31, 0, 0},
-	{0x3815, 0x31, 0, 0}, {0x3800, 0x00, 0, 0}, {0x3801, 0x00, 0, 0},
-	{0x3802, 0x00, 0, 0}, {0x3803, 0x04, 0, 0}, {0x3804, 0x0a, 0, 0},
-	{0x3805, 0x3f, 0, 0}, {0x3806, 0x07, 0, 0}, {0x3807, 0x9b, 0, 0},
-	{0x3810, 0x00, 0, 0},
-	{0x3811, 0x10, 0, 0}, {0x3812, 0x00, 0, 0}, {0x3813, 0x06, 0, 0},
-	{0x3618, 0x00, 0, 0}, {0x3612, 0x29, 0, 0}, {0x3708, 0x64, 0, 0},
-	{0x3709, 0x52, 0, 0}, {0x370c, 0x03, 0, 0}, {0x3a02, 0x03, 0, 0},
-	{0x3a03, 0xd8, 0, 0}, {0x3a08, 0x01, 0, 0}, {0x3a09, 0x27, 0, 0},
-	{0x3a0a, 0x00, 0, 0}, {0x3a0b, 0xf6, 0, 0}, {0x3a0e, 0x03, 0, 0},
-	{0x3a0d, 0x04, 0, 0}, {0x3a14, 0x03, 0, 0}, {0x3a15, 0xd8, 0, 0},
-	{0x4001, 0x02, 0, 0}, {0x4004, 0x02, 0, 0},
-	{0x4407, 0x04, 0, 0}, {0x460b, 0x35, 0, 0}, {0x460c, 0x22, 0, 0},
-	{0x3824, 0x02, 0, 0}, {0x5001, 0xa3, 0, 0},
-};
-
-static const struct reg_value ov5640_setting_NTSC_720_480[] = {
-	{0x3c07, 0x08, 0, 0},
-	{0x3c09, 0x1c, 0, 0}, {0x3c0a, 0x9c, 0, 0}, {0x3c0b, 0x40, 0, 0},
-	{0x3814, 0x31, 0, 0},
-	{0x3815, 0x31, 0, 0}, {0x3800, 0x00, 0, 0}, {0x3801, 0x00, 0, 0},
-	{0x3802, 0x00, 0, 0}, {0x3803, 0x04, 0, 0}, {0x3804, 0x0a, 0, 0},
-	{0x3805, 0x3f, 0, 0}, {0x3806, 0x07, 0, 0}, {0x3807, 0x9b, 0, 0},
-	{0x3810, 0x00, 0, 0},
-	{0x3811, 0x10, 0, 0}, {0x3812, 0x00, 0, 0}, {0x3813, 0x3c, 0, 0},
-	{0x3618, 0x00, 0, 0}, {0x3612, 0x29, 0, 0}, {0x3708, 0x64, 0, 0},
-	{0x3709, 0x52, 0, 0}, {0x370c, 0x03, 0, 0}, {0x3a02, 0x03, 0, 0},
-	{0x3a03, 0xd8, 0, 0}, {0x3a08, 0x01, 0, 0}, {0x3a09, 0x27, 0, 0},
-	{0x3a0a, 0x00, 0, 0}, {0x3a0b, 0xf6, 0, 0}, {0x3a0e, 0x03, 0, 0},
-	{0x3a0d, 0x04, 0, 0}, {0x3a14, 0x03, 0, 0}, {0x3a15, 0xd8, 0, 0},
-	{0x4001, 0x02, 0, 0}, {0x4004, 0x02, 0, 0},
-	{0x4407, 0x04, 0, 0}, {0x460b, 0x35, 0, 0}, {0x460c, 0x22, 0, 0},
-	{0x3824, 0x02, 0, 0}, {0x5001, 0xa3, 0, 0},
-};
-
-static const struct reg_value ov5640_setting_PAL_720_576[] = {
-	{0x3c07, 0x08, 0, 0},
-	{0x3c09, 0x1c, 0, 0}, {0x3c0a, 0x9c, 0, 0}, {0x3c0b, 0x40, 0, 0},
-	{0x3814, 0x31, 0, 0},
-	{0x3815, 0x31, 0, 0}, {0x3800, 0x00, 0, 0}, {0x3801, 0x00, 0, 0},
-	{0x3802, 0x00, 0, 0}, {0x3803, 0x04, 0, 0}, {0x3804, 0x0a, 0, 0},
-	{0x3805, 0x3f, 0, 0}, {0x3806, 0x07, 0, 0}, {0x3807, 0x9b, 0, 0},
-	{0x3810, 0x00, 0, 0},
-	{0x3811, 0x38, 0, 0}, {0x3812, 0x00, 0, 0}, {0x3813, 0x06, 0, 0},
-	{0x3618, 0x00, 0, 0}, {0x3612, 0x29, 0, 0}, {0x3708, 0x64, 0, 0},
-	{0x3709, 0x52, 0, 0}, {0x370c, 0x03, 0, 0}, {0x3a02, 0x03, 0, 0},
-	{0x3a03, 0xd8, 0, 0}, {0x3a08, 0x01, 0, 0}, {0x3a09, 0x27, 0, 0},
-	{0x3a0a, 0x00, 0, 0}, {0x3a0b, 0xf6, 0, 0}, {0x3a0e, 0x03, 0, 0},
-	{0x3a0d, 0x04, 0, 0}, {0x3a14, 0x03, 0, 0}, {0x3a15, 0xd8, 0, 0},
-	{0x4001, 0x02, 0, 0}, {0x4004, 0x02, 0, 0},
-	{0x4407, 0x04, 0, 0}, {0x460b, 0x35, 0, 0}, {0x460c, 0x22, 0, 0},
-	{0x3824, 0x02, 0, 0}, {0x5001, 0xa3, 0, 0},
-};
-
-static const struct reg_value ov5640_setting_720P_1280_720[] = {
-	{0x3c07, 0x07, 0, 0},
-	{0x3c09, 0x1c, 0, 0}, {0x3c0a, 0x9c, 0, 0}, {0x3c0b, 0x40, 0, 0},
-	{0x3814, 0x31, 0, 0},
-	{0x3815, 0x31, 0, 0}, {0x3800, 0x00, 0, 0}, {0x3801, 0x00, 0, 0},
-	{0x3802, 0x00, 0, 0}, {0x3803, 0xfa, 0, 0}, {0x3804, 0x0a, 0, 0},
-	{0x3805, 0x3f, 0, 0}, {0x3806, 0x06, 0, 0}, {0x3807, 0xa9, 0, 0},
-	{0x3810, 0x00, 0, 0},
-	{0x3811, 0x10, 0, 0}, {0x3812, 0x00, 0, 0}, {0x3813, 0x04, 0, 0},
-	{0x3618, 0x00, 0, 0}, {0x3612, 0x29, 0, 0}, {0x3708, 0x64, 0, 0},
-	{0x3709, 0x52, 0, 0}, {0x370c, 0x03, 0, 0}, {0x3a02, 0x02, 0, 0},
-	{0x3a03, 0xe4, 0, 0}, {0x3a08, 0x01, 0, 0}, {0x3a09, 0xbc, 0, 0},
-	{0x3a0a, 0x01, 0, 0}, {0x3a0b, 0x72, 0, 0}, {0x3a0e, 0x01, 0, 0},
-	{0x3a0d, 0x02, 0, 0}, {0x3a14, 0x02, 0, 0}, {0x3a15, 0xe4, 0, 0},
-	{0x4001, 0x02, 0, 0}, {0x4004, 0x02, 0, 0},
-	{0x4407, 0x04, 0, 0}, {0x460b, 0x37, 0, 0}, {0x460c, 0x20, 0, 0},
-	{0x3824, 0x04, 0, 0}, {0x5001, 0x83, 0, 0},
-};
-
-static const struct reg_value ov5640_setting_1080P_1920_1080[] = {
-	{0x3008, 0x42, 0, 0},
-	{0x3c07, 0x08, 0, 0},
-	{0x3c09, 0x1c, 0, 0}, {0x3c0a, 0x9c, 0, 0}, {0x3c0b, 0x40, 0, 0},
-	{0x3814, 0x11, 0, 0},
-	{0x3815, 0x11, 0, 0}, {0x3800, 0x00, 0, 0}, {0x3801, 0x00, 0, 0},
-	{0x3802, 0x00, 0, 0}, {0x3803, 0x00, 0, 0}, {0x3804, 0x0a, 0, 0},
-	{0x3805, 0x3f, 0, 0}, {0x3806, 0x07, 0, 0}, {0x3807, 0x9f, 0, 0},
-	{0x3810, 0x00, 0, 0},
-	{0x3811, 0x10, 0, 0}, {0x3812, 0x00, 0, 0}, {0x3813, 0x04, 0, 0},
-	{0x3618, 0x04, 0, 0}, {0x3612, 0x29, 0, 0}, {0x3708, 0x21, 0, 0},
-	{0x3709, 0x12, 0, 0}, {0x370c, 0x00, 0, 0}, {0x3a02, 0x03, 0, 0},
-	{0x3a03, 0xd8, 0, 0}, {0x3a08, 0x01, 0, 0}, {0x3a09, 0x27, 0, 0},
-	{0x3a0a, 0x00, 0, 0}, {0x3a0b, 0xf6, 0, 0}, {0x3a0e, 0x03, 0, 0},
-	{0x3a0d, 0x04, 0, 0}, {0x3a14, 0x03, 0, 0}, {0x3a15, 0xd8, 0, 0},
-	{0x4001, 0x02, 0, 0}, {0x4004, 0x06, 0, 0},
-	{0x4407, 0x04, 0, 0}, {0x460b, 0x35, 0, 0}, {0x460c, 0x22, 0, 0},
-	{0x3824, 0x02, 0, 0}, {0x5001, 0x83, 0, 0},
-	{0x3c07, 0x07, 0, 0}, {0x3c08, 0x00, 0, 0},
-	{0x3c09, 0x1c, 0, 0}, {0x3c0a, 0x9c, 0, 0}, {0x3c0b, 0x40, 0, 0},
-	{0x3800, 0x01, 0, 0}, {0x3801, 0x50, 0, 0}, {0x3802, 0x01, 0, 0},
-	{0x3803, 0xb2, 0, 0}, {0x3804, 0x08, 0, 0}, {0x3805, 0xef, 0, 0},
-	{0x3806, 0x05, 0, 0}, {0x3807, 0xf1, 0, 0},
-	{0x3612, 0x2b, 0, 0}, {0x3708, 0x64, 0, 0},
-	{0x3a02, 0x04, 0, 0}, {0x3a03, 0x60, 0, 0}, {0x3a08, 0x01, 0, 0},
-	{0x3a09, 0x50, 0, 0}, {0x3a0a, 0x01, 0, 0}, {0x3a0b, 0x18, 0, 0},
-	{0x3a0e, 0x03, 0, 0}, {0x3a0d, 0x04, 0, 0}, {0x3a14, 0x04, 0, 0},
-	{0x3a15, 0x60, 0, 0}, {0x4407, 0x04, 0, 0},
-	{0x460b, 0x37, 0, 0}, {0x460c, 0x20, 0, 0}, {0x3824, 0x04, 0, 0},
-	{0x4005, 0x1a, 0, 0}, {0x3008, 0x02, 0, 0},
-};
-
-static const struct reg_value ov5640_setting_QSXGA_2592_1944[] = {
-	{0x3c07, 0x08, 0, 0},
-	{0x3c09, 0x1c, 0, 0}, {0x3c0a, 0x9c, 0, 0}, {0x3c0b, 0x40, 0, 0},
-	{0x3814, 0x11, 0, 0},
-	{0x3815, 0x11, 0, 0}, {0x3800, 0x00, 0, 0}, {0x3801, 0x00, 0, 0},
-	{0x3802, 0x00, 0, 0}, {0x3803, 0x00, 0, 0}, {0x3804, 0x0a, 0, 0},
-	{0x3805, 0x3f, 0, 0}, {0x3806, 0x07, 0, 0}, {0x3807, 0x9f, 0, 0},
-	{0x3810, 0x00, 0, 0},
-	{0x3811, 0x10, 0, 0}, {0x3812, 0x00, 0, 0}, {0x3813, 0x04, 0, 0},
-	{0x3618, 0x04, 0, 0}, {0x3612, 0x29, 0, 0}, {0x3708, 0x21, 0, 0},
-	{0x3709, 0x12, 0, 0}, {0x370c, 0x00, 0, 0}, {0x3a02, 0x03, 0, 0},
-	{0x3a03, 0xd8, 0, 0}, {0x3a08, 0x01, 0, 0}, {0x3a09, 0x27, 0, 0},
-	{0x3a0a, 0x00, 0, 0}, {0x3a0b, 0xf6, 0, 0}, {0x3a0e, 0x03, 0, 0},
-	{0x3a0d, 0x04, 0, 0}, {0x3a14, 0x03, 0, 0}, {0x3a15, 0xd8, 0, 0},
-	{0x4001, 0x02, 0, 0}, {0x4004, 0x06, 0, 0},
-	{0x4407, 0x04, 0, 0}, {0x460b, 0x35, 0, 0}, {0x460c, 0x22, 0, 0},
-	{0x3824, 0x02, 0, 0}, {0x5001, 0x83, 0, 70},
-};
-
-/* power-on sensor init reg table */
-static const struct ov5640_mode_info ov5640_mode_init_data = {
-	0, SUBSAMPLING, 640, 1896, 480, 984,
-	ov5640_init_setting_30fps_VGA,
-	ARRAY_SIZE(ov5640_init_setting_30fps_VGA),
-};
-
-static const struct ov5640_mode_info
-ov5640_mode_data[OV5640_NUM_MODES] = {
-	{OV5640_MODE_QCIF_176_144, SUBSAMPLING,
-	 176, 1896, 144, 984,
-	 ov5640_setting_QCIF_176_144,
-	 ARRAY_SIZE(ov5640_setting_QCIF_176_144)},
-	{OV5640_MODE_QVGA_320_240, SUBSAMPLING,
-	 320, 1896, 240, 984,
-	 ov5640_setting_QVGA_320_240,
-	 ARRAY_SIZE(ov5640_setting_QVGA_320_240)},
-	{OV5640_MODE_VGA_640_480, SUBSAMPLING,
-	 640, 1896, 480, 1080,
-	 ov5640_setting_VGA_640_480,
-	 ARRAY_SIZE(ov5640_setting_VGA_640_480)},
-	{OV5640_MODE_NTSC_720_480, SUBSAMPLING,
-	 720, 1896, 480, 984,
-	 ov5640_setting_NTSC_720_480,
-	 ARRAY_SIZE(ov5640_setting_NTSC_720_480)},
-	{OV5640_MODE_PAL_720_576, SUBSAMPLING,
-	 720, 1896, 576, 984,
-	 ov5640_setting_PAL_720_576,
-	 ARRAY_SIZE(ov5640_setting_PAL_720_576)},
-	{OV5640_MODE_XGA_1024_768, SUBSAMPLING,
-	 1024, 1896, 768, 1080,
-	 ov5640_setting_XGA_1024_768,
-	 ARRAY_SIZE(ov5640_setting_XGA_1024_768)},
-	{OV5640_MODE_720P_1280_720, SUBSAMPLING,
-	 1280, 1892, 720, 740,
-	 ov5640_setting_720P_1280_720,
-	 ARRAY_SIZE(ov5640_setting_720P_1280_720)},
-	{OV5640_MODE_1080P_1920_1080, SCALING,
-	 1920, 2500, 1080, 1120,
-	 ov5640_setting_1080P_1920_1080,
-	 ARRAY_SIZE(ov5640_setting_1080P_1920_1080)},
-	{OV5640_MODE_QSXGA_2592_1944, SCALING,
-	 2592, 2844, 1944, 1968,
-	 ov5640_setting_QSXGA_2592_1944,
-	 ARRAY_SIZE(ov5640_setting_QSXGA_2592_1944)},
-};
 
 static int ov5640_init_slave_id(struct ov5640_dev *sensor)
 {
@@ -692,6 +362,693 @@ static int ov5640_mod_reg(struct ov5640_dev *sensor, u16 reg,
 
 	return ov5640_write(sensor, reg, val);
 }
+
+/*
+ * FIXME: all of these register tables are likely filled with
+ * entries that set the register to their power-on default values,
+ * and which are otherwise not touched by this driver. Those entries
+ * should be identified and removed to speed register load time
+ * over i2c.
+ */
+/* YUV422 UYVY VGA@30fps */
+static int ov5640_setup_initial(struct ov5640_dev *sensor)
+{
+	int ret;
+
+	ret = ov5640_write(sensor, OV5640_REG_SCCB_CTRL03, 0x11); /* poweron default */
+	if (ret)
+		return ret;
+
+	ov5640_write(sensor, OV5640_REG_SYS_CTRL0, 0x82);
+
+	usleep_range(1000 * 5, 1000 * 5 + 100);
+
+	ov5640_write(sensor, OV5640_REG_SYS_CTRL0, 0x42);
+	ov5640_write(sensor, OV5640_REG_SCCB_CTRL03, 0x03);
+	ov5640_write(sensor, OV5640_REG_PAD_OUTPUT_ENABLE01, 0x00); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_PAD_OUTPUT_ENABLE02, 0x00); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_VMC_CTRL30, 0x36);
+	ov5640_write(sensor, OV5640_REG_VMC_CTRL31, 0x0E);
+	ov5640_write(sensor, OV5640_REG_VMC_CTRL32, 0xE2);
+	ov5640_write(sensor, OV5640_REG_VMC_CTRL33, 0x12);
+	ov5640_write(sensor, OV5640_REG_VMC_CTRL21, 0xE0);
+	ov5640_write(sensor, OV5640_REG_3700_CTRL04, 0xA0);
+	ov5640_write(sensor, OV5640_REG_3700_CTRL03, 0x5A);
+	ov5640_write(sensor, OV5640_REG_3700_CTRL15, 0x78);
+	ov5640_write(sensor, OV5640_REG_3700_CTRL17, 0x01);
+	ov5640_write(sensor, OV5640_REG_3700_CTRL0B, 0x60);
+	ov5640_write(sensor, OV5640_REG_3700_CTRL05, 0x1A);
+	ov5640_write(sensor, OV5640_REG_3900_CTRL05, 0x02);
+	ov5640_write(sensor, OV5640_REG_3900_CTRL06, 0x10);
+	ov5640_write(sensor, OV5640_REG_3900_CTRL01, 0x0A);
+	ov5640_write(sensor, OV5640_REG_3700_CTRL31, 0x12);
+	ov5640_write(sensor, OV5640_REG_VMC_CTRL00, 0x08); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_VMC_CTRL01, 0x33);
+	ov5640_write(sensor, OV5640_REG_SYS_CTRL2D, 0x60);
+	ov5640_write(sensor, OV5640_REG_VMC_CTRL20, 0x52);
+	ov5640_write(sensor, OV5640_REG_3700_CTRL1B, 0x20);
+	ov5640_write(sensor, OV5640_REG_DVP_CTRL1C, 0x50);
+	ov5640_write(sensor, OV5640_REG_AEC_CTRL13, 0x43);
+	ov5640_write16(sensor, OV5640_REG_AEC_GAIN_CEILING, 0x00F8);
+	ov5640_write(sensor, OV5640_REG_VMC_CTRL35, 0x13);
+	ov5640_write(sensor, OV5640_REG_VMC_CTRL36, 0x03);
+	ov5640_write(sensor, OV5640_REG_VMC_CTRL34, 0x40);
+	ov5640_write(sensor, OV5640_REG_VMC_CTRL22, 0x01);
+	ov5640_write(sensor, OV5640_REG_HZ5060_CTRL01, 0xA4);
+	ov5640_write(sensor, OV5640_REG_HZ5060_CTRL04, 0x28);
+	ov5640_write(sensor, OV5640_REG_HZ5060_CTRL05, 0x98);
+	ov5640_write16(sensor, OV5640_REG_HZ5060_LIGHT_METER1, 0x0008);
+	ov5640_write16(sensor, OV5640_REG_HZ5060_LIGHT_METER2, 0x001C);
+	ov5640_write16(sensor, OV5640_REG_HZ5060_SAMPLE_NUM, 0x9C40);
+	ov5640_write(sensor, OV5640_REG_TIMING_REG20, 0x41);
+	ov5640_write(sensor, OV5640_REG_TIMING_REG21, 0x07);
+	ov5640_write(sensor, OV5640_REG_TIMING_X_INC, 0x31);
+	ov5640_write(sensor, OV5640_REG_TIMING_Y_INC, 0x31);
+	ov5640_write16(sensor, OV5640_REG_TIMING_HS, 0x0000); /* poweron default */
+	ov5640_write16(sensor, OV5640_REG_TIMING_VS, 0x0004);
+	ov5640_write16(sensor, OV5640_REG_TIMING_HW, 0x0A3F); /* poweron default */
+	ov5640_write16(sensor, OV5640_REG_TIMING_VH, 0x079B);
+	ov5640_write16(sensor, OV5640_REG_TIMING_HOFFSET, 0x0010); /* poweron default */
+	ov5640_write16(sensor, OV5640_REG_TIMING_VOFFSET, 0x0006);
+	ov5640_write(sensor, OV5640_REG_VMC_CTRL18, 0x00);
+	ov5640_write(sensor, OV5640_REG_VMC_CTRL12, 0x29);
+	ov5640_write(sensor, OV5640_REG_3700_CTRL08, 0x64);
+	ov5640_write(sensor, OV5640_REG_3700_CTRL09, 0x52);
+	ov5640_write(sensor, OV5640_REG_3700_CTRL0C, 0x03);
+	ov5640_write16(sensor, OV5640_REG_AEC_MAX_EXPOSURE_60, 0x03D8);
+	ov5640_write16(sensor, OV5640_REG_AEC_B50_STEP, 0x0127); /* poweron default */
+	ov5640_write16(sensor, OV5640_REG_AEC_B60_STEP, 0x00F6); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_AEC_CTRL0E, 0x03);
+	ov5640_write(sensor, OV5640_REG_AEC_CTRL0D, 0x04);
+	ov5640_write16(sensor, OV5640_REG_AEC_MAX_EXPOSURE_50, 0x03D8);
+	ov5640_write(sensor, OV5640_REG_BLC_CTRL01, 0x02);
+	ov5640_write(sensor, OV5640_REG_BLC_CTRL04, 0x02);
+	ov5640_write(sensor, OV5640_REG_SYS_RESET00, 0x00);
+	ov5640_write(sensor, OV5640_REG_SYS_RESET02, 0x1C); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_SYS_CLOCK_ENABLE00, 0xFF);
+	ov5640_write(sensor, OV5640_REG_SYS_CLOCK_ENABLE02, 0xC3); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_SYS_CTRL2E, 0x08);
+	ov5640_write(sensor, OV5640_REG_FORMAT_CTRL00, 0x3F);
+	ov5640_write(sensor, OV5640_REG_ISP_FORMAT_MUX_CTRL, 0x00);
+	ov5640_write(sensor, OV5640_REG_JPEG_CTRL07, 0x04);
+	ov5640_write(sensor, OV5640_REG_JPEG_DEBUG0E, 0x00);
+	ov5640_write(sensor, OV5640_REG_VFIFO_DEBUG0B, 0x35);
+	ov5640_write(sensor, OV5640_REG_VFIFO_CTRL0C, 0x22);
+	ov5640_write(sensor, OV5640_REG_MIPI_PCLK_PERIOD, 0x0A);
+	ov5640_write(sensor, OV5640_REG_TIMING_REG24, 0x02);
+	ov5640_write(sensor, OV5640_REG_ISP_CTRL00, 0xA7);
+	ov5640_write(sensor, OV5640_REG_ISP_CTRL01, 0xA3);
+	ov5640_write(sensor, OV5640_REG_AWB_CTRL00, 0xFF); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_AWB_CTRL01, 0xF2);
+	ov5640_write(sensor, OV5640_REG_AWB_CTRL02, 0x00);
+	ov5640_write(sensor, OV5640_REG_AWB_CTRL03, 0x14);
+	ov5640_write(sensor, OV5640_REG_AWB_CTRL04, 0x25); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_AWB_CTRL05, 0x24); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_AWB_CTRL06, 0x09);
+	ov5640_write(sensor, OV5640_REG_AWB_CTRL07, 0x09);
+	ov5640_write(sensor, OV5640_REG_AWB_CTRL08, 0x09);
+	ov5640_write(sensor, OV5640_REG_AWB_CTRL09, 0x88);
+	ov5640_write(sensor, OV5640_REG_AWB_CTRL0A, 0x54);
+	ov5640_write(sensor, OV5640_REG_AWB_CTRL0B, 0xEE);
+	ov5640_write(sensor, OV5640_REG_AWB_CTRL0C, 0xB2);
+	ov5640_write(sensor, OV5640_REG_AWB_CTRL0D, 0x50);
+	ov5640_write(sensor, OV5640_REG_AWB_CTRL0E, 0x34);
+	ov5640_write(sensor, OV5640_REG_AWB_CTRL0F, 0x6B);
+	ov5640_write(sensor, OV5640_REG_AWB_CTRL10, 0x46);
+	ov5640_write(sensor, OV5640_REG_AWB_CTRL11, 0xF8);
+	ov5640_write(sensor, OV5640_REG_AWB_CTRL12, 0x04);
+	ov5640_write(sensor, OV5640_REG_AWB_CTRL13, 0x70);
+	ov5640_write(sensor, OV5640_REG_AWB_CTRL14, 0xF0); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_AWB_CTRL15, 0xF0); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_AWB_CTRL16, 0x03); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_AWB_CTRL17, 0x01);
+	ov5640_write(sensor, OV5640_REG_AWB_CTRL18, 0x04);
+	ov5640_write(sensor, OV5640_REG_AWB_CTRL19, 0x6C);
+	ov5640_write(sensor, OV5640_REG_AWB_CTRL1A, 0x04);
+	ov5640_write(sensor, OV5640_REG_AWB_CTRL1B, 0x00); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_AWB_CTRL1C, 0x09);
+	ov5640_write(sensor, OV5640_REG_AWB_CTRL1D, 0x2B);
+	ov5640_write(sensor, OV5640_REG_AWB_CTRL1E, 0x38);
+	ov5640_write(sensor, OV5640_REG_CMX1, 0x1E);
+	ov5640_write(sensor, OV5640_REG_CMX2, 0x5B);
+	ov5640_write(sensor, OV5640_REG_CMX3, 0x08); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_CMX4, 0x0A);
+	ov5640_write(sensor, OV5640_REG_CMX5, 0x7E);
+	ov5640_write(sensor, OV5640_REG_CMX6, 0x88);
+	ov5640_write(sensor, OV5640_REG_CMX7, 0x7C);
+	ov5640_write(sensor, OV5640_REG_CMX8, 0x6C);
+	ov5640_write(sensor, OV5640_REG_CMX9, 0x10);
+	ov5640_write16(sensor, OV5640_REG_CMXSIGN, 0x0198); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_CIP_SHARPENMT_THRESHOLD1, 0x08); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_CIP_SHARPENMT_THRESHOLD2, 0x30);
+	ov5640_write(sensor, OV5640_REG_CIP_SHARPENMT_OFFSET1, 0x10);
+	ov5640_write(sensor, OV5640_REG_CIP_SHARPENMT_OFFSET2, 0x00);
+	ov5640_write(sensor, OV5640_REG_CIP_DNS_THRESHOLD1, 0x08); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_CIP_DNS_THRESHOLD2, 0x30);
+	ov5640_write(sensor, OV5640_REG_CIP_DNS_OFFSET1, 0x08);
+	ov5640_write(sensor, OV5640_REG_CIP_DNS_OFFSET2, 0x16); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_CIP_SHARPENTH_THRESHOLD1, 0x08); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_CIP_SHARPENTH_THRESHOLD2, 0x30);
+	ov5640_write(sensor, OV5640_REG_CIP_SHARPENTH_OFFSET1, 0x04); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_CIP_SHARPENTH_OFFSET2, 0x06); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_GAMMA_CONTROL00, 0x01);
+	ov5640_write(sensor, OV5640_REG_GAMMA_YST00, 0x08);
+	ov5640_write(sensor, OV5640_REG_GAMMA_YST01, 0x14);
+	ov5640_write(sensor, OV5640_REG_GAMMA_YST02, 0x28);
+	ov5640_write(sensor, OV5640_REG_GAMMA_YST03, 0x51);
+	ov5640_write(sensor, OV5640_REG_GAMMA_YST04, 0x65);
+	ov5640_write(sensor, OV5640_REG_GAMMA_YST05, 0x71);
+	ov5640_write(sensor, OV5640_REG_GAMMA_YST06, 0x7D);
+	ov5640_write(sensor, OV5640_REG_GAMMA_YST07, 0x87);
+	ov5640_write(sensor, OV5640_REG_GAMMA_YST08, 0x91);
+	ov5640_write(sensor, OV5640_REG_GAMMA_YST09, 0x9A);
+	ov5640_write(sensor, OV5640_REG_GAMMA_YST0A, 0xAA);
+	ov5640_write(sensor, OV5640_REG_GAMMA_YST0B, 0xB8);
+	ov5640_write(sensor, OV5640_REG_GAMMA_YST0C, 0xCD);
+	ov5640_write(sensor, OV5640_REG_GAMMA_YST0D, 0xDD);
+	ov5640_write(sensor, OV5640_REG_GAMMA_YST0E, 0xEA);
+	ov5640_write(sensor, OV5640_REG_GAMMA_YST0F, 0x1D);
+	ov5640_write(sensor, OV5640_REG_SDE_CTRL00, 0x02);
+	ov5640_write(sensor, OV5640_REG_SDE_CTRL03, 0x40); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_SDE_CTRL04, 0x10);
+	ov5640_write(sensor, OV5640_REG_SDE_CTRL09, 0x10);
+	ov5640_write(sensor, OV5640_REG_SDE_CTRL0A, 0x00);
+	ov5640_write(sensor, OV5640_REG_SDE_CTRL0B, 0xF8);
+	ov5640_write(sensor, OV5640_REG_LENC_GMTRX00, 0x23);
+	ov5640_write(sensor, OV5640_REG_LENC_GMTRX01, 0x14);
+	ov5640_write(sensor, OV5640_REG_LENC_GMTRX02, 0x0F);
+	ov5640_write(sensor, OV5640_REG_LENC_GMTRX03, 0x0F);
+	ov5640_write(sensor, OV5640_REG_LENC_GMTRX04, 0x12);
+	ov5640_write(sensor, OV5640_REG_LENC_GMTRX05, 0x26);
+	ov5640_write(sensor, OV5640_REG_LENC_GMTRX10, 0x0C);
+	ov5640_write(sensor, OV5640_REG_LENC_GMTRX11, 0x08); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_LENC_GMTRX12, 0x05);
+	ov5640_write(sensor, OV5640_REG_LENC_GMTRX13, 0x05);
+	ov5640_write(sensor, OV5640_REG_LENC_GMTRX14, 0x08); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_LENC_GMTRX15, 0x0D);
+	ov5640_write(sensor, OV5640_REG_LENC_GMTRX20, 0x08);
+	ov5640_write(sensor, OV5640_REG_LENC_GMTRX21, 0x03);
+	ov5640_write(sensor, OV5640_REG_LENC_GMTRX22, 0x00); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_LENC_GMTRX23, 0x00); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_LENC_GMTRX24, 0x03);
+	ov5640_write(sensor, OV5640_REG_LENC_GMTRX25, 0x09);
+	ov5640_write(sensor, OV5640_REG_LENC_GMTRX30, 0x07);
+	ov5640_write(sensor, OV5640_REG_LENC_GMTRX31, 0x03);
+	ov5640_write(sensor, OV5640_REG_LENC_GMTRX32, 0x00); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_LENC_GMTRX33, 0x01);
+	ov5640_write(sensor, OV5640_REG_LENC_GMTRX34, 0x03);
+	ov5640_write(sensor, OV5640_REG_LENC_GMTRX35, 0x08);
+	ov5640_write(sensor, OV5640_REG_LENC_GMTRX40, 0x0D);
+	ov5640_write(sensor, OV5640_REG_LENC_GMTRX41, 0x08); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_LENC_GMTRX42, 0x05);
+	ov5640_write(sensor, OV5640_REG_LENC_GMTRX43, 0x06);
+	ov5640_write(sensor, OV5640_REG_LENC_GMTRX44, 0x08); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_LENC_GMTRX45, 0x0E);
+	ov5640_write(sensor, OV5640_REG_LENC_GMTRX50, 0x29);
+	ov5640_write(sensor, OV5640_REG_LENC_GMTRX51, 0x17);
+	ov5640_write(sensor, OV5640_REG_LENC_GMTRX52, 0x11);
+	ov5640_write(sensor, OV5640_REG_LENC_GMTRX53, 0x11);
+	ov5640_write(sensor, OV5640_REG_LENC_GMTRX54, 0x15);
+	ov5640_write(sensor, OV5640_REG_LENC_GMTRX55, 0x28);
+	ov5640_write(sensor, OV5640_REG_LENC_BRMATRX00, 0x46);
+	ov5640_write(sensor, OV5640_REG_LENC_BRMATRX01, 0x26);
+	ov5640_write(sensor, OV5640_REG_LENC_BRMATRX02, 0x08);
+	ov5640_write(sensor, OV5640_REG_LENC_BRMATRX03, 0x26);
+	ov5640_write(sensor, OV5640_REG_LENC_BRMATRX04, 0x64);
+	ov5640_write(sensor, OV5640_REG_LENC_BRMATRX05, 0x26);
+	ov5640_write(sensor, OV5640_REG_LENC_BRMATRX06, 0x24);
+	ov5640_write(sensor, OV5640_REG_LENC_BRMATRX07, 0x22);
+	ov5640_write(sensor, OV5640_REG_LENC_BRMATRX08, 0x24);
+	ov5640_write(sensor, OV5640_REG_LENC_BRMATRX09, 0x24);
+	ov5640_write(sensor, OV5640_REG_LENC_BRMATRX20, 0x06);
+	ov5640_write(sensor, OV5640_REG_LENC_BRMATRX21, 0x22);
+	ov5640_write(sensor, OV5640_REG_LENC_BRMATRX22, 0x40);
+	ov5640_write(sensor, OV5640_REG_LENC_BRMATRX23, 0x42);
+	ov5640_write(sensor, OV5640_REG_LENC_BRMATRX24, 0x24);
+	ov5640_write(sensor, OV5640_REG_LENC_BRMATRX30, 0x26);
+	ov5640_write(sensor, OV5640_REG_LENC_BRMATRX31, 0x24);
+	ov5640_write(sensor, OV5640_REG_LENC_BRMATRX32, 0x22);
+	ov5640_write(sensor, OV5640_REG_LENC_BRMATRX33, 0x22);
+	ov5640_write(sensor, OV5640_REG_LENC_BRMATRX34, 0x26);
+	ov5640_write(sensor, OV5640_REG_LENC_BRMATRX40, 0x44);
+	ov5640_write(sensor, OV5640_REG_LENC_BRMATRX41, 0x24);
+	ov5640_write(sensor, OV5640_REG_LENC_BRMATRX42, 0x26);
+	ov5640_write(sensor, OV5640_REG_LENC_BRMATRX43, 0x28);
+	ov5640_write(sensor, OV5640_REG_LENC_BRMATRX44, 0x42);
+	ov5640_write(sensor, OV5640_REG_LENC_BR_OFFSET, 0xCE);
+	ov5640_write(sensor, OV5640_REG_ISP_DEBUG25, 0x00); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_AEC_CTRL0F, 0x30);
+	ov5640_write(sensor, OV5640_REG_AEC_CTRL10, 0x28);
+	ov5640_write(sensor, OV5640_REG_AEC_CTRL1B, 0x30);
+	ov5640_write(sensor, OV5640_REG_AEC_CTRL1E, 0x26);
+	ov5640_write(sensor, OV5640_REG_AEC_CTRL11, 0x60);
+	ov5640_write(sensor, OV5640_REG_AEC_CTRL1F, 0x14);
+	ov5640_write(sensor, OV5640_REG_SYS_CTRL0, 0x02); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_HZ5060_CTRL00, 0x04);
+
+	usleep_range(1000 * 300, 1000 * 300 + 100);
+
+	return 0;
+}
+
+/*
+ * 176x144
+ */
+static int ov5640_setup_QCIF_176x144(struct ov5640_dev *sensor)
+{
+	int ret;
+
+	ret = ov5640_write(sensor, OV5640_REG_HZ5060_LIGHT_METER1_LOW, 0x08);
+	if (ret)
+		return ret;
+
+	ov5640_write(sensor, OV5640_REG_HZ5060_LIGHT_METER2_LOW, 0x1C);
+	ov5640_write16(sensor, OV5640_REG_HZ5060_SAMPLE_NUM, 0x9C40);
+	ov5640_write(sensor, OV5640_REG_TIMING_X_INC, 0x31);
+	ov5640_write(sensor, OV5640_REG_TIMING_Y_INC, 0x31);
+	ov5640_write16(sensor, OV5640_REG_TIMING_HS, 0x0000); /* poweron default */
+	ov5640_write16(sensor, OV5640_REG_TIMING_VS, 0x0004);
+	ov5640_write16(sensor, OV5640_REG_TIMING_HW, 0x0A3F); /* poweron default */
+	ov5640_write16(sensor, OV5640_REG_TIMING_VH, 0x079B);
+	ov5640_write16(sensor, OV5640_REG_TIMING_HOFFSET, 0x0010); /* poweron default */
+	ov5640_write16(sensor, OV5640_REG_TIMING_VOFFSET, 0x0006);
+	ov5640_write(sensor, OV5640_REG_VMC_CTRL18, 0x00);
+	ov5640_write(sensor, OV5640_REG_VMC_CTRL12, 0x29);
+	ov5640_write(sensor, OV5640_REG_3700_CTRL08, 0x64);
+	ov5640_write(sensor, OV5640_REG_3700_CTRL09, 0x52);
+	ov5640_write(sensor, OV5640_REG_3700_CTRL0C, 0x03);
+	ov5640_write16(sensor, OV5640_REG_AEC_MAX_EXPOSURE_60, 0x03D8);
+	ov5640_write16(sensor, OV5640_REG_AEC_B50_STEP, 0x0127); /* poweron default */
+	ov5640_write16(sensor, OV5640_REG_AEC_B60_STEP, 0x00F6); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_AEC_CTRL0E, 0x03);
+	ov5640_write(sensor, OV5640_REG_AEC_CTRL0D, 0x04);
+	ov5640_write16(sensor, OV5640_REG_AEC_MAX_EXPOSURE_50, 0x03D8);
+	ov5640_write(sensor, OV5640_REG_BLC_CTRL01, 0x02);
+	ov5640_write(sensor, OV5640_REG_BLC_CTRL04, 0x02);
+	ov5640_write(sensor, OV5640_REG_JPEG_CTRL07, 0x04);
+	ov5640_write(sensor, OV5640_REG_VFIFO_DEBUG0B, 0x35);
+	ov5640_write(sensor, OV5640_REG_VFIFO_CTRL0C, 0x22);
+	ov5640_write(sensor, OV5640_REG_TIMING_REG24, 0x02);
+	ov5640_write(sensor, OV5640_REG_ISP_CTRL01, 0xA3);
+
+	return 0;
+}
+
+/*
+ * 320x240
+ */
+static int ov5640_setup_QVGA_320x240(struct ov5640_dev *sensor)
+{
+	int ret;
+
+	ret = ov5640_write(sensor, OV5640_REG_HZ5060_LIGHT_METER1_LOW, 0x08);
+	if (ret)
+		return ret;
+
+	ov5640_write(sensor, OV5640_REG_HZ5060_LIGHT_METER2_LOW, 0x1C);
+	ov5640_write16(sensor, OV5640_REG_HZ5060_SAMPLE_NUM, 0x9C40);
+	ov5640_write(sensor, OV5640_REG_TIMING_X_INC, 0x31);
+	ov5640_write(sensor, OV5640_REG_TIMING_Y_INC, 0x31);
+	ov5640_write16(sensor, OV5640_REG_TIMING_HS, 0x0000); /* poweron default */
+	ov5640_write16(sensor, OV5640_REG_TIMING_VS, 0x0004);
+	ov5640_write16(sensor, OV5640_REG_TIMING_HW, 0x0A3F); /* poweron default */
+	ov5640_write16(sensor, OV5640_REG_TIMING_VH, 0x079B);
+	ov5640_write16(sensor, OV5640_REG_TIMING_HOFFSET, 0x0010); /* poweron default */
+	ov5640_write16(sensor, OV5640_REG_TIMING_VOFFSET, 0x0006);
+	ov5640_write(sensor, OV5640_REG_VMC_CTRL18, 0x00);
+	ov5640_write(sensor, OV5640_REG_VMC_CTRL12, 0x29);
+	ov5640_write(sensor, OV5640_REG_3700_CTRL08, 0x64);
+	ov5640_write(sensor, OV5640_REG_3700_CTRL09, 0x52);
+	ov5640_write(sensor, OV5640_REG_3700_CTRL0C, 0x03);
+	ov5640_write16(sensor, OV5640_REG_AEC_MAX_EXPOSURE_60, 0x03D8);
+	ov5640_write16(sensor, OV5640_REG_AEC_B50_STEP, 0x0127); /* poweron default */
+	ov5640_write16(sensor, OV5640_REG_AEC_B60_STEP, 0x00F6); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_AEC_CTRL0E, 0x03);
+	ov5640_write(sensor, OV5640_REG_AEC_CTRL0D, 0x04);
+	ov5640_write16(sensor, OV5640_REG_AEC_MAX_EXPOSURE_50, 0x03D8);
+	ov5640_write(sensor, OV5640_REG_BLC_CTRL01, 0x02);
+	ov5640_write(sensor, OV5640_REG_BLC_CTRL04, 0x02);
+	ov5640_write(sensor, OV5640_REG_JPEG_CTRL07, 0x04);
+	ov5640_write(sensor, OV5640_REG_VFIFO_DEBUG0B, 0x35);
+	ov5640_write(sensor, OV5640_REG_VFIFO_CTRL0C, 0x22);
+	ov5640_write(sensor, OV5640_REG_TIMING_REG24, 0x02);
+	ov5640_write(sensor, OV5640_REG_ISP_CTRL01, 0xA3);
+
+	return 0;
+}
+
+/*
+ * 640x480
+ */
+static int ov5640_setup_VGA_640x480(struct ov5640_dev *sensor)
+{
+	int ret;
+
+	ret = ov5640_write(sensor, OV5640_REG_HZ5060_LIGHT_METER1_LOW, 0x08);
+	if (ret)
+		return ret;
+
+	ov5640_write(sensor, OV5640_REG_HZ5060_LIGHT_METER2_LOW, 0x1C);
+	ov5640_write16(sensor, OV5640_REG_HZ5060_SAMPLE_NUM, 0x9C40);
+	ov5640_write(sensor, OV5640_REG_TIMING_X_INC, 0x31);
+	ov5640_write(sensor, OV5640_REG_TIMING_Y_INC, 0x31);
+	ov5640_write16(sensor, OV5640_REG_TIMING_HS, 0x0000); /* poweron default */
+	ov5640_write16(sensor, OV5640_REG_TIMING_VS, 0x0004);
+	ov5640_write16(sensor, OV5640_REG_TIMING_HW, 0x0A3F); /* poweron default */
+	ov5640_write16(sensor, OV5640_REG_TIMING_VH, 0x079B);
+	ov5640_write16(sensor, OV5640_REG_TIMING_HOFFSET, 0x0010); /* poweron default */
+	ov5640_write16(sensor, OV5640_REG_TIMING_VOFFSET, 0x0006);
+	ov5640_write(sensor, OV5640_REG_VMC_CTRL18, 0x00);
+	ov5640_write(sensor, OV5640_REG_VMC_CTRL12, 0x29);
+	ov5640_write(sensor, OV5640_REG_3700_CTRL08, 0x64);
+	ov5640_write(sensor, OV5640_REG_3700_CTRL09, 0x52);
+	ov5640_write(sensor, OV5640_REG_3700_CTRL0C, 0x03);
+	ov5640_write16(sensor, OV5640_REG_AEC_MAX_EXPOSURE_60, 0x03D8);
+	ov5640_write16(sensor, OV5640_REG_AEC_B50_STEP, 0x0127); /* poweron default */
+	ov5640_write16(sensor, OV5640_REG_AEC_B60_STEP, 0x00F6); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_AEC_CTRL0E, 0x03);
+	ov5640_write(sensor, OV5640_REG_AEC_CTRL0D, 0x04);
+	ov5640_write16(sensor, OV5640_REG_AEC_MAX_EXPOSURE_50, 0x03D8);
+	ov5640_write(sensor, OV5640_REG_BLC_CTRL01, 0x02);
+	ov5640_write(sensor, OV5640_REG_BLC_CTRL04, 0x02);
+	ov5640_write(sensor, OV5640_REG_JPEG_CTRL07, 0x04);
+	ov5640_write(sensor, OV5640_REG_VFIFO_DEBUG0B, 0x35);
+	ov5640_write(sensor, OV5640_REG_VFIFO_CTRL0C, 0x22);
+	ov5640_write(sensor, OV5640_REG_TIMING_REG24, 0x02);
+	ov5640_write(sensor, OV5640_REG_ISP_CTRL01, 0xA3);
+
+	return 0;
+}
+
+/*
+ * 720x480
+ */
+static int ov5640_setup_NTSC_720x480(struct ov5640_dev *sensor)
+{
+	int ret;
+
+	ret = ov5640_write(sensor, OV5640_REG_HZ5060_LIGHT_METER1_LOW, 0x08);
+	if (ret)
+		return ret;
+
+	ov5640_write(sensor, OV5640_REG_HZ5060_LIGHT_METER2_LOW, 0x1C);
+	ov5640_write16(sensor, OV5640_REG_HZ5060_SAMPLE_NUM, 0x9C40);
+	ov5640_write(sensor, OV5640_REG_TIMING_X_INC, 0x31);
+	ov5640_write(sensor, OV5640_REG_TIMING_Y_INC, 0x31);
+	ov5640_write16(sensor, OV5640_REG_TIMING_HS, 0x0000); /* poweron default */
+	ov5640_write16(sensor, OV5640_REG_TIMING_VS, 0x0004);
+	ov5640_write16(sensor, OV5640_REG_TIMING_HW, 0x0A3F); /* poweron default */
+	ov5640_write16(sensor, OV5640_REG_TIMING_VH, 0x079B);
+	ov5640_write16(sensor, OV5640_REG_TIMING_HOFFSET, 0x0010); /* poweron default */
+	ov5640_write16(sensor, OV5640_REG_TIMING_VOFFSET, 0x003C);
+	ov5640_write(sensor, OV5640_REG_VMC_CTRL18, 0x00);
+	ov5640_write(sensor, OV5640_REG_VMC_CTRL12, 0x29);
+	ov5640_write(sensor, OV5640_REG_3700_CTRL08, 0x64);
+	ov5640_write(sensor, OV5640_REG_3700_CTRL09, 0x52);
+	ov5640_write(sensor, OV5640_REG_3700_CTRL0C, 0x03);
+	ov5640_write16(sensor, OV5640_REG_AEC_MAX_EXPOSURE_60, 0x03D8);
+	ov5640_write16(sensor, OV5640_REG_AEC_B50_STEP, 0x0127); /* poweron default */
+	ov5640_write16(sensor, OV5640_REG_AEC_B60_STEP, 0x00F6); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_AEC_CTRL0E, 0x03);
+	ov5640_write(sensor, OV5640_REG_AEC_CTRL0D, 0x04);
+	ov5640_write16(sensor, OV5640_REG_AEC_MAX_EXPOSURE_50, 0x03D8);
+	ov5640_write(sensor, OV5640_REG_BLC_CTRL01, 0x02);
+	ov5640_write(sensor, OV5640_REG_BLC_CTRL04, 0x02);
+	ov5640_write(sensor, OV5640_REG_JPEG_CTRL07, 0x04);
+	ov5640_write(sensor, OV5640_REG_VFIFO_DEBUG0B, 0x35);
+	ov5640_write(sensor, OV5640_REG_VFIFO_CTRL0C, 0x22);
+	ov5640_write(sensor, OV5640_REG_TIMING_REG24, 0x02);
+	ov5640_write(sensor, OV5640_REG_ISP_CTRL01, 0xA3);
+
+	return 0;
+}
+
+/*
+ * 720x576
+ */
+static int ov5640_setup_PAL_720x576(struct ov5640_dev *sensor)
+{
+	int ret;
+
+	ret = ov5640_write(sensor, OV5640_REG_HZ5060_LIGHT_METER1_LOW, 0x08);
+	if (ret)
+		return ret;
+
+	ov5640_write(sensor, OV5640_REG_HZ5060_LIGHT_METER2_LOW, 0x1C);
+	ov5640_write16(sensor, OV5640_REG_HZ5060_SAMPLE_NUM, 0x9C40);
+	ov5640_write(sensor, OV5640_REG_TIMING_X_INC, 0x31);
+	ov5640_write(sensor, OV5640_REG_TIMING_Y_INC, 0x31);
+	ov5640_write16(sensor, OV5640_REG_TIMING_HS, 0x0000); /* poweron default */
+	ov5640_write16(sensor, OV5640_REG_TIMING_VS, 0x0004);
+	ov5640_write16(sensor, OV5640_REG_TIMING_HW, 0x0A3F); /* poweron default */
+	ov5640_write16(sensor, OV5640_REG_TIMING_VH, 0x079B);
+	ov5640_write16(sensor, OV5640_REG_TIMING_HOFFSET, 0x0038);
+	ov5640_write16(sensor, OV5640_REG_TIMING_VOFFSET, 0x0006);
+	ov5640_write(sensor, OV5640_REG_VMC_CTRL18, 0x00);
+	ov5640_write(sensor, OV5640_REG_VMC_CTRL12, 0x29);
+	ov5640_write(sensor, OV5640_REG_3700_CTRL08, 0x64);
+	ov5640_write(sensor, OV5640_REG_3700_CTRL09, 0x52);
+	ov5640_write(sensor, OV5640_REG_3700_CTRL0C, 0x03);
+	ov5640_write16(sensor, OV5640_REG_AEC_MAX_EXPOSURE_60, 0x03D8);
+	ov5640_write16(sensor, OV5640_REG_AEC_B50_STEP, 0x0127); /* poweron default */
+	ov5640_write16(sensor, OV5640_REG_AEC_B60_STEP, 0x00F6); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_AEC_CTRL0E, 0x03);
+	ov5640_write(sensor, OV5640_REG_AEC_CTRL0D, 0x04);
+	ov5640_write16(sensor, OV5640_REG_AEC_MAX_EXPOSURE_50, 0x03D8);
+	ov5640_write(sensor, OV5640_REG_BLC_CTRL01, 0x02);
+	ov5640_write(sensor, OV5640_REG_BLC_CTRL04, 0x02);
+	ov5640_write(sensor, OV5640_REG_JPEG_CTRL07, 0x04);
+	ov5640_write(sensor, OV5640_REG_VFIFO_DEBUG0B, 0x35);
+	ov5640_write(sensor, OV5640_REG_VFIFO_CTRL0C, 0x22);
+	ov5640_write(sensor, OV5640_REG_TIMING_REG24, 0x02);
+	ov5640_write(sensor, OV5640_REG_ISP_CTRL01, 0xA3);
+
+	return 0;
+}
+
+/*
+ * 1024x768
+ */
+static int ov5640_setup_XGA_1024x768(struct ov5640_dev *sensor)
+{
+	int ret;
+
+	ret = ov5640_write(sensor, OV5640_REG_HZ5060_LIGHT_METER1_LOW, 0x08);
+	if (ret)
+		return ret;
+
+	ov5640_write(sensor, OV5640_REG_HZ5060_LIGHT_METER2_LOW, 0x1C);
+	ov5640_write16(sensor, OV5640_REG_HZ5060_SAMPLE_NUM, 0x9C40);
+	ov5640_write(sensor, OV5640_REG_TIMING_X_INC, 0x31);
+	ov5640_write(sensor, OV5640_REG_TIMING_Y_INC, 0x31);
+	ov5640_write16(sensor, OV5640_REG_TIMING_HS, 0x0000); /* poweron default */
+	ov5640_write16(sensor, OV5640_REG_TIMING_VS, 0x0004);
+	ov5640_write16(sensor, OV5640_REG_TIMING_HW, 0x0A3F); /* poweron default */
+	ov5640_write16(sensor, OV5640_REG_TIMING_VH, 0x079B);
+	ov5640_write16(sensor, OV5640_REG_TIMING_HOFFSET, 0x0010); /* poweron default */
+	ov5640_write16(sensor, OV5640_REG_TIMING_VOFFSET, 0x0006);
+	ov5640_write(sensor, OV5640_REG_VMC_CTRL18, 0x00);
+	ov5640_write(sensor, OV5640_REG_VMC_CTRL12, 0x29);
+	ov5640_write(sensor, OV5640_REG_3700_CTRL08, 0x64);
+	ov5640_write(sensor, OV5640_REG_3700_CTRL09, 0x52);
+	ov5640_write(sensor, OV5640_REG_3700_CTRL0C, 0x03);
+	ov5640_write16(sensor, OV5640_REG_AEC_MAX_EXPOSURE_60, 0x03D8);
+	ov5640_write16(sensor, OV5640_REG_AEC_B50_STEP, 0x0127); /* poweron default */
+	ov5640_write16(sensor, OV5640_REG_AEC_B60_STEP, 0x00F6); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_AEC_CTRL0E, 0x03);
+	ov5640_write(sensor, OV5640_REG_AEC_CTRL0D, 0x04);
+	ov5640_write16(sensor, OV5640_REG_AEC_MAX_EXPOSURE_50, 0x03D8);
+	ov5640_write(sensor, OV5640_REG_BLC_CTRL01, 0x02);
+	ov5640_write(sensor, OV5640_REG_BLC_CTRL04, 0x02);
+	ov5640_write(sensor, OV5640_REG_JPEG_CTRL07, 0x04);
+	ov5640_write(sensor, OV5640_REG_VFIFO_DEBUG0B, 0x35);
+	ov5640_write(sensor, OV5640_REG_VFIFO_CTRL0C, 0x22);
+	ov5640_write(sensor, OV5640_REG_TIMING_REG24, 0x02);
+	ov5640_write(sensor, OV5640_REG_ISP_CTRL01, 0xA3);
+
+	return 0;
+}
+
+/*
+ * 1280x720
+ */
+static int ov5640_setup_720P_1280x720(struct ov5640_dev *sensor)
+{
+	int ret;
+
+	ret = ov5640_write(sensor, OV5640_REG_HZ5060_LIGHT_METER1_LOW, 0x07);
+	if (ret)
+		return ret;
+
+	ov5640_write(sensor, OV5640_REG_HZ5060_LIGHT_METER2_LOW, 0x1C);
+	ov5640_write16(sensor, OV5640_REG_HZ5060_SAMPLE_NUM, 0x9C40);
+	ov5640_write(sensor, OV5640_REG_TIMING_X_INC, 0x31);
+	ov5640_write(sensor, OV5640_REG_TIMING_Y_INC, 0x31);
+	ov5640_write16(sensor, OV5640_REG_TIMING_HS, 0x0000); /* poweron default */
+	ov5640_write16(sensor, OV5640_REG_TIMING_VS, 0x00FA);
+	ov5640_write16(sensor, OV5640_REG_TIMING_HW, 0x0A3F); /* poweron default */
+	ov5640_write16(sensor, OV5640_REG_TIMING_VH, 0x06A9);
+	ov5640_write16(sensor, OV5640_REG_TIMING_HOFFSET, 0x0010); /* poweron default */
+	ov5640_write16(sensor, OV5640_REG_TIMING_VOFFSET, 0x0004); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_VMC_CTRL18, 0x00);
+	ov5640_write(sensor, OV5640_REG_VMC_CTRL12, 0x29);
+	ov5640_write(sensor, OV5640_REG_3700_CTRL08, 0x64);
+	ov5640_write(sensor, OV5640_REG_3700_CTRL09, 0x52);
+	ov5640_write(sensor, OV5640_REG_3700_CTRL0C, 0x03);
+	ov5640_write16(sensor, OV5640_REG_AEC_MAX_EXPOSURE_60, 0x02E4);
+	ov5640_write16(sensor, OV5640_REG_AEC_B50_STEP, 0x01BC);
+	ov5640_write16(sensor, OV5640_REG_AEC_B60_STEP, 0x0172);
+	ov5640_write(sensor, OV5640_REG_AEC_CTRL0E, 0x01);
+	ov5640_write(sensor, OV5640_REG_AEC_CTRL0D, 0x02);
+	ov5640_write16(sensor, OV5640_REG_AEC_MAX_EXPOSURE_50, 0x02E4);
+	ov5640_write(sensor, OV5640_REG_BLC_CTRL01, 0x02);
+	ov5640_write(sensor, OV5640_REG_BLC_CTRL04, 0x02);
+	ov5640_write(sensor, OV5640_REG_JPEG_CTRL07, 0x04);
+	ov5640_write(sensor, OV5640_REG_VFIFO_DEBUG0B, 0x37); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_VFIFO_CTRL0C, 0x20); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_TIMING_REG24, 0x04);
+	ov5640_write(sensor, OV5640_REG_ISP_CTRL01, 0x83);
+
+	return 0;
+}
+
+/*
+ * 1920x1080
+ */
+static int ov5640_setup_1080P_1920x1080(struct ov5640_dev *sensor)
+{
+	int ret;
+
+	ret = ov5640_write(sensor, OV5640_REG_SYS_CTRL0, 0x42);
+	if (ret)
+		return ret;
+
+	ov5640_write(sensor, OV5640_REG_HZ5060_LIGHT_METER1_LOW, 0x08);
+	ov5640_write(sensor, OV5640_REG_HZ5060_LIGHT_METER2_LOW, 0x1C);
+	ov5640_write16(sensor, OV5640_REG_HZ5060_SAMPLE_NUM, 0x9C40);
+	ov5640_write(sensor, OV5640_REG_TIMING_X_INC, 0x11); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_TIMING_Y_INC, 0x11); /* poweron default */
+	ov5640_write16(sensor, OV5640_REG_TIMING_HS, 0x0000); /* poweron default */
+	ov5640_write16(sensor, OV5640_REG_TIMING_VS, 0x0000); /* poweron default */
+	ov5640_write16(sensor, OV5640_REG_TIMING_HW, 0x0A3F); /* poweron default */
+	ov5640_write16(sensor, OV5640_REG_TIMING_VH, 0x079F); /* poweron default */
+	ov5640_write16(sensor, OV5640_REG_TIMING_HOFFSET, 0x0010); /* poweron default */
+	ov5640_write16(sensor, OV5640_REG_TIMING_VOFFSET, 0x0004); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_VMC_CTRL18, 0x04); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_VMC_CTRL12, 0x29);
+	ov5640_write(sensor, OV5640_REG_3700_CTRL08, 0x21); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_3700_CTRL09, 0x12); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_3700_CTRL0C, 0x00); /* poweron default */
+	ov5640_write16(sensor, OV5640_REG_AEC_MAX_EXPOSURE_60, 0x03D8);
+	ov5640_write16(sensor, OV5640_REG_AEC_B50_STEP, 0x0127); /* poweron default */
+	ov5640_write16(sensor, OV5640_REG_AEC_B60_STEP, 0x00F6); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_AEC_CTRL0E, 0x03);
+	ov5640_write(sensor, OV5640_REG_AEC_CTRL0D, 0x04);
+	ov5640_write16(sensor, OV5640_REG_AEC_MAX_EXPOSURE_50, 0x03D8);
+	ov5640_write(sensor, OV5640_REG_BLC_CTRL01, 0x02);
+	ov5640_write(sensor, OV5640_REG_BLC_CTRL04, 0x06);
+	ov5640_write(sensor, OV5640_REG_JPEG_CTRL07, 0x04);
+	ov5640_write(sensor, OV5640_REG_VFIFO_DEBUG0B, 0x35);
+	ov5640_write(sensor, OV5640_REG_VFIFO_CTRL0C, 0x22);
+	ov5640_write(sensor, OV5640_REG_TIMING_REG24, 0x02);
+	ov5640_write(sensor, OV5640_REG_ISP_CTRL01, 0x83);
+	ov5640_write(sensor, OV5640_REG_HZ5060_LIGHT_METER1_LOW, 0x07);
+	ov5640_write16(sensor, OV5640_REG_HZ5060_LIGHT_METER2, 0x001C);
+	ov5640_write16(sensor, OV5640_REG_HZ5060_SAMPLE_NUM, 0x9C40);
+	ov5640_write16(sensor, OV5640_REG_TIMING_HS, 0x0150);
+	ov5640_write16(sensor, OV5640_REG_TIMING_VS, 0x01B2);
+	ov5640_write16(sensor, OV5640_REG_TIMING_HW, 0x08EF);
+	ov5640_write16(sensor, OV5640_REG_TIMING_VH, 0x05F1);
+	ov5640_write(sensor, OV5640_REG_VMC_CTRL12, 0x2B);
+	ov5640_write(sensor, OV5640_REG_3700_CTRL08, 0x64);
+	ov5640_write16(sensor, OV5640_REG_AEC_MAX_EXPOSURE_60, 0x0460);
+	ov5640_write16(sensor, OV5640_REG_AEC_B50_STEP, 0x0150);
+	ov5640_write16(sensor, OV5640_REG_AEC_B60_STEP, 0x0118);
+	ov5640_write(sensor, OV5640_REG_AEC_CTRL0E, 0x03);
+	ov5640_write(sensor, OV5640_REG_AEC_CTRL0D, 0x04);
+	ov5640_write16(sensor, OV5640_REG_AEC_MAX_EXPOSURE_50, 0x0460);
+	ov5640_write(sensor, OV5640_REG_JPEG_CTRL07, 0x04);
+	ov5640_write(sensor, OV5640_REG_VFIFO_DEBUG0B, 0x37); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_VFIFO_CTRL0C, 0x20); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_TIMING_REG24, 0x04);
+	ov5640_write(sensor, OV5640_REG_BLC_CTRL05, 0x1A);
+	ov5640_write(sensor, OV5640_REG_SYS_CTRL0, 0x02); /* poweron default */
+
+	return 0;
+}
+
+/*
+ * 2592x1944
+ */
+static int ov5640_setup_QSXGA_2592x1944(struct ov5640_dev *sensor)
+{
+	int ret;
+
+	ret = ov5640_write(sensor, OV5640_REG_HZ5060_LIGHT_METER1_LOW, 0x08);
+	if (ret)
+		return ret;
+
+	ov5640_write(sensor, OV5640_REG_HZ5060_LIGHT_METER2_LOW, 0x1C);
+	ov5640_write16(sensor, OV5640_REG_HZ5060_SAMPLE_NUM, 0x9C40);
+	ov5640_write(sensor, OV5640_REG_TIMING_X_INC, 0x11); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_TIMING_Y_INC, 0x11); /* poweron default */
+	ov5640_write16(sensor, OV5640_REG_TIMING_HS, 0x0000); /* poweron default */
+	ov5640_write16(sensor, OV5640_REG_TIMING_VS, 0x0000); /* poweron default */
+	ov5640_write16(sensor, OV5640_REG_TIMING_HW, 0x0A3F); /* poweron default */
+	ov5640_write16(sensor, OV5640_REG_TIMING_VH, 0x079F); /* poweron default */
+	ov5640_write16(sensor, OV5640_REG_TIMING_HOFFSET, 0x0010); /* poweron default */
+	ov5640_write16(sensor, OV5640_REG_TIMING_VOFFSET, 0x0004); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_VMC_CTRL18, 0x04); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_VMC_CTRL12, 0x29);
+	ov5640_write(sensor, OV5640_REG_3700_CTRL08, 0x21); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_3700_CTRL09, 0x12); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_3700_CTRL0C, 0x00); /* poweron default */
+	ov5640_write16(sensor, OV5640_REG_AEC_MAX_EXPOSURE_60, 0x03D8);
+	ov5640_write16(sensor, OV5640_REG_AEC_B50_STEP, 0x0127); /* poweron default */
+	ov5640_write16(sensor, OV5640_REG_AEC_B60_STEP, 0x00F6); /* poweron default */
+	ov5640_write(sensor, OV5640_REG_AEC_CTRL0E, 0x03);
+	ov5640_write(sensor, OV5640_REG_AEC_CTRL0D, 0x04);
+	ov5640_write16(sensor, OV5640_REG_AEC_MAX_EXPOSURE_50, 0x03D8);
+	ov5640_write(sensor, OV5640_REG_BLC_CTRL01, 0x02);
+	ov5640_write(sensor, OV5640_REG_BLC_CTRL04, 0x06);
+	ov5640_write(sensor, OV5640_REG_JPEG_CTRL07, 0x04);
+	ov5640_write(sensor, OV5640_REG_VFIFO_DEBUG0B, 0x35);
+	ov5640_write(sensor, OV5640_REG_VFIFO_CTRL0C, 0x22);
+	ov5640_write(sensor, OV5640_REG_TIMING_REG24, 0x02);
+	ov5640_write(sensor, OV5640_REG_ISP_CTRL01, 0x83);
+
+	usleep_range(1000 * 70, 1000 * 70 + 100);
+
+	return 0;
+}
+
+/* power-on sensor init reg table */
+static const struct ov5640_mode_info ov5640_mode_init_data = {
+	0, SUBSAMPLING, 640, 1896, 480, 984, ov5640_setup_initial,
+};
+
+static const struct ov5640_mode_info
+ov5640_mode_data[OV5640_NUM_MODES] = {
+	{OV5640_MODE_QCIF_176_144, SUBSAMPLING,
+	 176, 1896, 144, 984, ov5640_setup_QCIF_176x144},
+	{OV5640_MODE_QVGA_320_240, SUBSAMPLING,
+	 320, 1896, 240, 984, ov5640_setup_QVGA_320x240},
+	{OV5640_MODE_VGA_640_480, SUBSAMPLING,
+	 640, 1896, 480, 1080, ov5640_setup_VGA_640x480},
+	{OV5640_MODE_NTSC_720_480, SUBSAMPLING,
+	 720, 1896, 480, 984, ov5640_setup_NTSC_720x480},
+	{OV5640_MODE_PAL_720_576, SUBSAMPLING,
+	 720, 1896, 576, 984, ov5640_setup_PAL_720x576},
+	{OV5640_MODE_XGA_1024_768, SUBSAMPLING,
+	 1024, 1896, 768, 1080, ov5640_setup_XGA_1024x768},
+	{OV5640_MODE_720P_1280_720, SUBSAMPLING,
+	 1280, 1892, 720, 740, ov5640_setup_720P_1280x720},
+	{OV5640_MODE_1080P_1920_1080, SCALING,
+	 1920, 2500, 1080, 1120, ov5640_setup_1080P_1920x1080},
+	{OV5640_MODE_QSXGA_2592_1944, SCALING,
+	 2592, 2844, 1944, 1968, ov5640_setup_QSXGA_2592x1944},
+};
+
 
 /*
  * After trying the various combinations, reading various
@@ -1074,29 +1431,11 @@ static int ov5640_set_timings(struct ov5640_dev *sensor,
 static int ov5640_load_regs(struct ov5640_dev *sensor,
 			    const struct ov5640_mode_info *mode)
 {
-	const struct reg_value *regs = mode->reg_data;
-	unsigned int i;
-	u32 delay_ms;
-	u16 reg_addr;
-	u8 mask, val;
-	int ret = 0;
+	int ret;
 
-	for (i = 0; i < mode->reg_data_size; ++i, ++regs) {
-		delay_ms = regs->delay_ms;
-		reg_addr = regs->reg_addr;
-		val = regs->val;
-		mask = regs->mask;
-
-		if (mask)
-			ret = ov5640_mod_reg(sensor, reg_addr, mask, val);
-		else
-			ret = ov5640_write(sensor, reg_addr, val);
-		if (ret)
-			break;
-
-		if (delay_ms)
-			usleep_range(1000 * delay_ms, 1000 * delay_ms + 100);
-	}
+	ret = mode->setup(sensor);
+	if (ret)
+		return ret;
 
 	return ov5640_set_timings(sensor, mode);
 }
@@ -1591,9 +1930,6 @@ static int ov5640_set_mode_exposure_calc(struct ov5640_dev *sensor,
 	u8 average;
 	int ret;
 
-	if (!mode->reg_data)
-		return -EINVAL;
-
 	/* read preview shutter */
 	ret = ov5640_get_exposure(sensor);
 	if (ret < 0)
@@ -1743,9 +2079,6 @@ static int ov5640_set_mode_exposure_calc(struct ov5640_dev *sensor,
 static int ov5640_set_mode_direct(struct ov5640_dev *sensor,
 				  const struct ov5640_mode_info *mode)
 {
-	if (!mode->reg_data)
-		return -EINVAL;
-
 	/* Write capture setting */
 	return ov5640_load_regs(sensor, mode);
 }
