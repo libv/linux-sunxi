@@ -618,11 +618,11 @@ static int ov5640_setup_QCIF_176x144(struct ov5640_dev *sensor)
 {
 	int ret;
 
-	ret = ov5640_write(sensor, OV5640_REG_HZ5060_LIGHT_METER1_LOW, 0x08);
+	ret = ov5640_write16(sensor, OV5640_REG_HZ5060_LIGHT_METER1, 0x0008);
 	if (ret)
 		return ret;
 
-	ov5640_write(sensor, OV5640_REG_HZ5060_LIGHT_METER2_LOW, 0x1C);
+	ov5640_write16(sensor, OV5640_REG_HZ5060_LIGHT_METER2, 0x001C);
 	ov5640_write16(sensor, OV5640_REG_HZ5060_SAMPLE_NUM, 0x9C40);
 	ov5640_write(sensor, OV5640_REG_TIMING_X_INC, 0x31);
 	ov5640_write(sensor, OV5640_REG_TIMING_Y_INC, 0x31);
@@ -661,11 +661,11 @@ static int ov5640_setup_QVGA_320x240(struct ov5640_dev *sensor)
 {
 	int ret;
 
-	ret = ov5640_write(sensor, OV5640_REG_HZ5060_LIGHT_METER1_LOW, 0x08);
+	ret = ov5640_write16(sensor, OV5640_REG_HZ5060_LIGHT_METER1, 0x0008);
 	if (ret)
 		return ret;
 
-	ov5640_write(sensor, OV5640_REG_HZ5060_LIGHT_METER2_LOW, 0x1C);
+	ov5640_write16(sensor, OV5640_REG_HZ5060_LIGHT_METER2, 0x001C);
 	ov5640_write16(sensor, OV5640_REG_HZ5060_SAMPLE_NUM, 0x9C40);
 	ov5640_write(sensor, OV5640_REG_TIMING_X_INC, 0x31);
 	ov5640_write(sensor, OV5640_REG_TIMING_Y_INC, 0x31);
@@ -704,11 +704,11 @@ static int ov5640_setup_VGA_640x480(struct ov5640_dev *sensor)
 {
 	int ret;
 
-	ret = ov5640_write(sensor, OV5640_REG_HZ5060_LIGHT_METER1_LOW, 0x08);
+	ret = ov5640_write16(sensor, OV5640_REG_HZ5060_LIGHT_METER1, 0x0008);
 	if (ret)
 		return ret;
 
-	ov5640_write(sensor, OV5640_REG_HZ5060_LIGHT_METER2_LOW, 0x1C);
+	ov5640_write16(sensor, OV5640_REG_HZ5060_LIGHT_METER2, 0x001C);
 	ov5640_write16(sensor, OV5640_REG_HZ5060_SAMPLE_NUM, 0x9C40);
 	ov5640_write(sensor, OV5640_REG_TIMING_X_INC, 0x31);
 	ov5640_write(sensor, OV5640_REG_TIMING_Y_INC, 0x31);
@@ -747,11 +747,11 @@ static int ov5640_setup_NTSC_720x480(struct ov5640_dev *sensor)
 {
 	int ret;
 
-	ret = ov5640_write(sensor, OV5640_REG_HZ5060_LIGHT_METER1_LOW, 0x08);
+	ret = ov5640_write16(sensor, OV5640_REG_HZ5060_LIGHT_METER1, 0x0008);
 	if (ret)
 		return ret;
 
-	ov5640_write(sensor, OV5640_REG_HZ5060_LIGHT_METER2_LOW, 0x1C);
+	ov5640_write16(sensor, OV5640_REG_HZ5060_LIGHT_METER2, 0x001C);
 	ov5640_write16(sensor, OV5640_REG_HZ5060_SAMPLE_NUM, 0x9C40);
 	ov5640_write(sensor, OV5640_REG_TIMING_X_INC, 0x31);
 	ov5640_write(sensor, OV5640_REG_TIMING_Y_INC, 0x31);
@@ -790,11 +790,11 @@ static int ov5640_setup_PAL_720x576(struct ov5640_dev *sensor)
 {
 	int ret;
 
-	ret = ov5640_write(sensor, OV5640_REG_HZ5060_LIGHT_METER1_LOW, 0x08);
+	ret = ov5640_write16(sensor, OV5640_REG_HZ5060_LIGHT_METER1, 0x0008);
 	if (ret)
 		return ret;
 
-	ov5640_write(sensor, OV5640_REG_HZ5060_LIGHT_METER2_LOW, 0x1C);
+	ov5640_write16(sensor, OV5640_REG_HZ5060_LIGHT_METER2, 0x001C);
 	ov5640_write16(sensor, OV5640_REG_HZ5060_SAMPLE_NUM, 0x9C40);
 	ov5640_write(sensor, OV5640_REG_TIMING_X_INC, 0x31);
 	ov5640_write(sensor, OV5640_REG_TIMING_Y_INC, 0x31);
@@ -833,11 +833,11 @@ static int ov5640_setup_XGA_1024x768(struct ov5640_dev *sensor)
 {
 	int ret;
 
-	ret = ov5640_write(sensor, OV5640_REG_HZ5060_LIGHT_METER1_LOW, 0x08);
+	ret = ov5640_write16(sensor, OV5640_REG_HZ5060_LIGHT_METER1, 0x0008);
 	if (ret)
 		return ret;
 
-	ov5640_write(sensor, OV5640_REG_HZ5060_LIGHT_METER2_LOW, 0x1C);
+	ov5640_write16(sensor, OV5640_REG_HZ5060_LIGHT_METER2, 0x001C);
 	ov5640_write16(sensor, OV5640_REG_HZ5060_SAMPLE_NUM, 0x9C40);
 	ov5640_write(sensor, OV5640_REG_TIMING_X_INC, 0x31);
 	ov5640_write(sensor, OV5640_REG_TIMING_Y_INC, 0x31);
@@ -876,11 +876,11 @@ static int ov5640_setup_720P_1280x720(struct ov5640_dev *sensor)
 {
 	int ret;
 
-	ret = ov5640_write(sensor, OV5640_REG_HZ5060_LIGHT_METER1_LOW, 0x07);
+	ret = ov5640_write16(sensor, OV5640_REG_HZ5060_LIGHT_METER1, 0x0007);
 	if (ret)
 		return ret;
 
-	ov5640_write(sensor, OV5640_REG_HZ5060_LIGHT_METER2_LOW, 0x1C);
+	ov5640_write16(sensor, OV5640_REG_HZ5060_LIGHT_METER2, 0x001C);
 	ov5640_write16(sensor, OV5640_REG_HZ5060_SAMPLE_NUM, 0x9C40);
 	ov5640_write(sensor, OV5640_REG_TIMING_X_INC, 0x31);
 	ov5640_write(sensor, OV5640_REG_TIMING_Y_INC, 0x31);
@@ -923,8 +923,8 @@ static int ov5640_setup_1080P_1920x1080(struct ov5640_dev *sensor)
 	if (ret)
 		return ret;
 
-	ov5640_write(sensor, OV5640_REG_HZ5060_LIGHT_METER1_LOW, 0x08);
-	ov5640_write(sensor, OV5640_REG_HZ5060_LIGHT_METER2_LOW, 0x1C);
+	ov5640_write16(sensor, OV5640_REG_HZ5060_LIGHT_METER1, 0x0008);
+	ov5640_write16(sensor, OV5640_REG_HZ5060_LIGHT_METER2, 0x001C);
 	ov5640_write16(sensor, OV5640_REG_HZ5060_SAMPLE_NUM, 0x9C40);
 	ov5640_write(sensor, OV5640_REG_TIMING_X_INC, 0x11); /* poweron default */
 	ov5640_write(sensor, OV5640_REG_TIMING_Y_INC, 0x11); /* poweron default */
@@ -952,7 +952,7 @@ static int ov5640_setup_1080P_1920x1080(struct ov5640_dev *sensor)
 	ov5640_write(sensor, OV5640_REG_VFIFO_CTRL0C, 0x22);
 	ov5640_write(sensor, OV5640_REG_TIMING_REG24, 0x02);
 	ov5640_write(sensor, OV5640_REG_ISP_CTRL01, 0x83);
-	ov5640_write(sensor, OV5640_REG_HZ5060_LIGHT_METER1_LOW, 0x07);
+	ov5640_write16(sensor, OV5640_REG_HZ5060_LIGHT_METER1, 0x0007);
 	ov5640_write16(sensor, OV5640_REG_HZ5060_LIGHT_METER2, 0x001C);
 	ov5640_write16(sensor, OV5640_REG_HZ5060_SAMPLE_NUM, 0x9C40);
 	ov5640_write16(sensor, OV5640_REG_TIMING_HS, 0x0150);
@@ -984,11 +984,11 @@ static int ov5640_setup_QSXGA_2592x1944(struct ov5640_dev *sensor)
 {
 	int ret;
 
-	ret = ov5640_write(sensor, OV5640_REG_HZ5060_LIGHT_METER1_LOW, 0x08);
+	ret = ov5640_write16(sensor, OV5640_REG_HZ5060_LIGHT_METER1, 0x0008);
 	if (ret)
 		return ret;
 
-	ov5640_write(sensor, OV5640_REG_HZ5060_LIGHT_METER2_LOW, 0x1C);
+	ov5640_write16(sensor, OV5640_REG_HZ5060_LIGHT_METER2, 0x001C);
 	ov5640_write16(sensor, OV5640_REG_HZ5060_SAMPLE_NUM, 0x9C40);
 	ov5640_write(sensor, OV5640_REG_TIMING_X_INC, 0x11); /* poweron default */
 	ov5640_write(sensor, OV5640_REG_TIMING_Y_INC, 0x11); /* poweron default */
