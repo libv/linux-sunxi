@@ -346,7 +346,7 @@ static int _ov5640_read16(struct ov5640_dev *sensor, u16 reg, u16 *val)
 }
 #define ov5640_read16(s, r, v) _ov5640_read16((s), r##_HIGH, (v));
 
-static int ov5640_mod_reg(struct ov5640_dev *sensor, u16 reg,
+static int ov5640_modify(struct ov5640_dev *sensor, u16 reg,
 			  u8 mask, u8 val)
 {
 	u8 readval;
@@ -1303,25 +1303,25 @@ static int ov5640_set_mipi_pclk(struct ov5640_dev *sensor,
 
 	ov5640_calc_sys_clk(sensor, rate, &prediv, &mult, &sysdiv);
 
-	ret = ov5640_mod_reg(sensor, OV5640_REG_SYS_PLL_CTRL0,
-			     0x0f, OV5640_PLL_CTRL0_MIPI_MODE_8BIT);
+	ret = ov5640_modify(sensor, OV5640_REG_SYS_PLL_CTRL0,
+			    0x0f, OV5640_PLL_CTRL0_MIPI_MODE_8BIT);
 
-	ret = ov5640_mod_reg(sensor, OV5640_REG_SYS_PLL_CTRL1,
-			     0xff, sysdiv << 4 | mipi_div);
+	ret = ov5640_modify(sensor, OV5640_REG_SYS_PLL_CTRL1,
+			    0xff, sysdiv << 4 | mipi_div);
 	if (ret)
 		return ret;
 
-	ret = ov5640_mod_reg(sensor, OV5640_REG_SYS_PLL_CTRL2, 0xff, mult);
+	ret = ov5640_modify(sensor, OV5640_REG_SYS_PLL_CTRL2, 0xff, mult);
 	if (ret)
 		return ret;
 
-	ret = ov5640_mod_reg(sensor, OV5640_REG_SYS_PLL_CTRL3,
-			     0x1f, OV5640_PLL_CTRL3_PLL_ROOT_DIV_2 | prediv);
+	ret = ov5640_modify(sensor, OV5640_REG_SYS_PLL_CTRL3,
+			    0x1f, OV5640_PLL_CTRL3_PLL_ROOT_DIV_2 | prediv);
 	if (ret)
 		return ret;
 
-	return ov5640_mod_reg(sensor, OV5640_REG_SYS_ROOT_DIVIDER,
-			      0x30, OV5640_PLL_SYS_ROOT_DIVIDER_BYPASS);
+	return ov5640_modify(sensor, OV5640_REG_SYS_ROOT_DIVIDER,
+			     0x30, OV5640_PLL_SYS_ROOT_DIVIDER_BYPASS);
 }
 
 static unsigned long ov5640_calc_pclk(struct ov5640_dev *sensor,
@@ -1352,8 +1352,8 @@ static int ov5640_set_dvp_pclk(struct ov5640_dev *sensor, unsigned long rate)
 	if (bit_div == 2)
 		bit_div = 8;
 
-	ret = ov5640_mod_reg(sensor, OV5640_REG_SYS_PLL_CTRL0,
-			     0x0f, bit_div);
+	ret = ov5640_modify(sensor, OV5640_REG_SYS_PLL_CTRL0,
+			    0x0f, bit_div);
 	if (ret)
 		return ret;
 
@@ -1361,23 +1361,23 @@ static int ov5640_set_dvp_pclk(struct ov5640_dev *sensor, unsigned long rate)
 	 * We need to set sysdiv according to the clock, and to clear
 	 * the MIPI divider.
 	 */
-	ret = ov5640_mod_reg(sensor, OV5640_REG_SYS_PLL_CTRL1,
-			     0xff, sysdiv << 4);
+	ret = ov5640_modify(sensor, OV5640_REG_SYS_PLL_CTRL1,
+			    0xff, sysdiv << 4);
 	if (ret)
 		return ret;
 
-	ret = ov5640_mod_reg(sensor, OV5640_REG_SYS_PLL_CTRL2,
-			     0xff, mult);
+	ret = ov5640_modify(sensor, OV5640_REG_SYS_PLL_CTRL2,
+			    0xff, mult);
 	if (ret)
 		return ret;
 
-	ret = ov5640_mod_reg(sensor, OV5640_REG_SYS_PLL_CTRL3,
-			     0x1f, prediv | ((pll_rdiv - 1) << 4));
+	ret = ov5640_modify(sensor, OV5640_REG_SYS_PLL_CTRL3,
+			    0x1f, prediv | ((pll_rdiv - 1) << 4));
 	if (ret)
 		return ret;
 
-	return ov5640_mod_reg(sensor, OV5640_REG_SYS_ROOT_DIVIDER, 0x30,
-			      (ilog2(pclk_div) << 4));
+	return ov5640_modify(sensor, OV5640_REG_SYS_ROOT_DIVIDER, 0x30,
+			     (ilog2(pclk_div) << 4));
 }
 
 /* set JPEG framing sizes */
@@ -1393,7 +1393,7 @@ static int ov5640_set_jpeg_timings(struct ov5640_dev *sensor,
 	 * No padding done. Last line may have less data. Varying
 	 * number of lines per frame, depending on amount of data.
 	 */
-	ret = ov5640_mod_reg(sensor, OV5640_REG_JPG_MODE_SELECT, 0x7, 0x3);
+	ret = ov5640_modify(sensor, OV5640_REG_JPG_MODE_SELECT, 0x7, 0x3);
 	if (ret < 0)
 		return ret;
 
@@ -1445,8 +1445,8 @@ static int ov5640_load_regs(struct ov5640_dev *sensor,
 
 static int ov5640_set_autoexposure(struct ov5640_dev *sensor, bool on)
 {
-	return ov5640_mod_reg(sensor, OV5640_REG_AEC_PK_MANUAL,
-			      BIT(0), on ? 0 : BIT(0));
+	return ov5640_modify(sensor, OV5640_REG_AEC_PK_MANUAL,
+			     BIT(0), on ? 0 : BIT(0));
 }
 
 /* read exposure, in number of line periods */
@@ -1510,8 +1510,8 @@ static int ov5640_set_gain(struct ov5640_dev *sensor, int gain)
 
 static int ov5640_set_autogain(struct ov5640_dev *sensor, bool on)
 {
-	return ov5640_mod_reg(sensor, OV5640_REG_AEC_PK_MANUAL,
-			      BIT(1), on ? 0 : BIT(1));
+	return ov5640_modify(sensor, OV5640_REG_AEC_PK_MANUAL,
+			     BIT(1), on ? 0 : BIT(1));
 }
 
 static int ov5640_set_stream_dvp(struct ov5640_dev *sensor, bool on)
@@ -1861,8 +1861,8 @@ static int ov5640_set_binning(struct ov5640_dev *sensor, bool enable)
 	 * TIMING TC REG21:
 	 * - [0]:	Horizontal binning enable
 	 */
-	ret = ov5640_mod_reg(sensor, OV5640_REG_TIMING_REG21,
-			     BIT(0), enable ? BIT(0) : 0);
+	ret = ov5640_modify(sensor, OV5640_REG_TIMING_REG21,
+			    BIT(0), enable ? BIT(0) : 0);
 	if (ret)
 		return ret;
 	/*
@@ -1870,8 +1870,8 @@ static int ov5640_set_binning(struct ov5640_dev *sensor, bool enable)
 	 * - [0]:	Undocumented, but hardcoded init sequences
 	 *		are always setting REG21/REG20 bit 0 to same value...
 	 */
-	return ov5640_mod_reg(sensor, OV5640_REG_TIMING_REG20,
-			      BIT(0), enable ? BIT(0) : 0);
+	return ov5640_modify(sensor, OV5640_REG_TIMING_REG20,
+			     BIT(0), enable ? BIT(0) : 0);
 }
 
 static int ov5640_set_virtual_channel(struct ov5640_dev *sensor)
@@ -2197,9 +2197,9 @@ static int ov5640_restore_mode(struct ov5640_dev *sensor)
 		return ret;
 	sensor->last_mode = &ov5640_mode_init_data;
 
-	ret = ov5640_mod_reg(sensor, OV5640_REG_SYS_ROOT_DIVIDER, 0x3f,
-			     (ilog2(OV5640_SCLK2X_ROOT_DIV) << 2) |
-			     ilog2(OV5640_SCLK_ROOT_DIV));
+	ret = ov5640_modify(sensor, OV5640_REG_SYS_ROOT_DIVIDER, 0x3f,
+			    (ilog2(OV5640_SCLK2X_ROOT_DIV) << 2) |
+			    ilog2(OV5640_SCLK_ROOT_DIV));
 	if (ret)
 		return ret;
 
@@ -2602,8 +2602,8 @@ static int ov5640_set_framefmt(struct ov5640_dev *sensor,
 	 * TIMING TC REG21:
 	 * - [5]:	JPEG enable
 	 */
-	ret = ov5640_mod_reg(sensor, OV5640_REG_TIMING_REG21,
-			     BIT(5), is_jpeg ? BIT(5) : 0);
+	ret = ov5640_modify(sensor, OV5640_REG_TIMING_REG21,
+			    BIT(5), is_jpeg ? BIT(5) : 0);
 	if (ret)
 		return ret;
 
@@ -2613,9 +2613,9 @@ static int ov5640_set_framefmt(struct ov5640_dev *sensor,
 	 * - [3]:	Reset SFIFO
 	 * - [2]:	Reset JPEG
 	 */
-	ret = ov5640_mod_reg(sensor, OV5640_REG_SYS_RESET02,
-			     BIT(4) | BIT(3) | BIT(2),
-			     is_jpeg ? 0 : (BIT(4) | BIT(3) | BIT(2)));
+	ret = ov5640_modify(sensor, OV5640_REG_SYS_RESET02,
+			    BIT(4) | BIT(3) | BIT(2),
+			    is_jpeg ? 0 : (BIT(4) | BIT(3) | BIT(2)));
 	if (ret)
 		return ret;
 
@@ -2624,9 +2624,9 @@ static int ov5640_set_framefmt(struct ov5640_dev *sensor,
 	 * - [5]:	Enable JPEG 2x clock
 	 * - [3]:	Enable JPEG clock
 	 */
-	return ov5640_mod_reg(sensor, OV5640_REG_SYS_CLOCK_ENABLE02,
-			      BIT(5) | BIT(3),
-			      is_jpeg ? (BIT(5) | BIT(3)) : 0);
+	return ov5640_modify(sensor, OV5640_REG_SYS_CLOCK_ENABLE02,
+			     BIT(5) | BIT(3),
+			     is_jpeg ? (BIT(5) | BIT(3)) : 0);
 }
 
 /*
@@ -2640,8 +2640,8 @@ static int ov5640_set_ctrl_hue(struct ov5640_dev *sensor, int value)
 	if (value) {
 		u8 cos = value >> 8, sin = value & 0xFF;
 
-		ret = ov5640_mod_reg(sensor, OV5640_REG_SDE_CTRL00,
-				     BIT(0), BIT(0));
+		ret = ov5640_modify(sensor, OV5640_REG_SDE_CTRL00,
+				    BIT(0), BIT(0));
 		if (ret)
 			return ret;
 
@@ -2653,7 +2653,7 @@ static int ov5640_set_ctrl_hue(struct ov5640_dev *sensor, int value)
 		if (ret)
 			return ret;
 	} else {
-		ret = ov5640_mod_reg(sensor, OV5640_REG_SDE_CTRL00, BIT(0), 0);
+		ret = ov5640_modify(sensor, OV5640_REG_SDE_CTRL00, BIT(0), 0);
 	}
 
 	return ret;
@@ -2664,14 +2664,14 @@ static int ov5640_set_ctrl_contrast(struct ov5640_dev *sensor, int value)
 	int ret;
 
 	if (value) {
-		ret = ov5640_mod_reg(sensor, OV5640_REG_SDE_CTRL00,
-				     BIT(2), BIT(2));
+		ret = ov5640_modify(sensor, OV5640_REG_SDE_CTRL00,
+				    BIT(2), BIT(2));
 		if (ret)
 			return ret;
 		ret = ov5640_write(sensor, OV5640_REG_SDE_CTRL05,
 				   value & 0xff);
 	} else {
-		ret = ov5640_mod_reg(sensor, OV5640_REG_SDE_CTRL00, BIT(2), 0);
+		ret = ov5640_modify(sensor, OV5640_REG_SDE_CTRL00, BIT(2), 0);
 	}
 
 	return ret;
@@ -2682,8 +2682,8 @@ static int ov5640_set_ctrl_saturation(struct ov5640_dev *sensor, int value)
 	int ret;
 
 	if (value) {
-		ret = ov5640_mod_reg(sensor, OV5640_REG_SDE_CTRL00,
-				     BIT(1), BIT(1));
+		ret = ov5640_modify(sensor, OV5640_REG_SDE_CTRL00,
+				    BIT(1), BIT(1));
 		if (ret)
 			return ret;
 		ret = ov5640_write(sensor, OV5640_REG_SDE_CTRL03,
@@ -2693,7 +2693,7 @@ static int ov5640_set_ctrl_saturation(struct ov5640_dev *sensor, int value)
 		ret = ov5640_write(sensor, OV5640_REG_SDE_CTRL04,
 				   value & 0xff);
 	} else {
-		ret = ov5640_mod_reg(sensor, OV5640_REG_SDE_CTRL00, BIT(1), 0);
+		ret = ov5640_modify(sensor, OV5640_REG_SDE_CTRL00, BIT(1), 0);
 	}
 
 	return ret;
@@ -2703,8 +2703,8 @@ static int ov5640_set_ctrl_white_balance(struct ov5640_dev *sensor, int awb)
 {
 	int ret;
 
-	ret = ov5640_mod_reg(sensor, OV5640_REG_AWB_MANUAL_CTRL,
-			     BIT(0), awb ? 0 : 1);
+	ret = ov5640_modify(sensor, OV5640_REG_AWB_MANUAL_CTRL,
+			    BIT(0), awb ? 0 : 1);
 	if (ret)
 		return ret;
 
@@ -2812,15 +2812,15 @@ static int ov5640_set_ctrl_light_freq(struct ov5640_dev *sensor, int value)
 {
 	int ret;
 
-	ret = ov5640_mod_reg(sensor, OV5640_REG_HZ5060_CTRL01, BIT(7),
-			     (value == V4L2_CID_POWER_LINE_FREQUENCY_AUTO) ?
-			     0 : BIT(7));
+	ret = ov5640_modify(sensor, OV5640_REG_HZ5060_CTRL01, BIT(7),
+			    (value == V4L2_CID_POWER_LINE_FREQUENCY_AUTO) ?
+			    0 : BIT(7));
 	if (ret)
 		return ret;
 
-	return ov5640_mod_reg(sensor, OV5640_REG_HZ5060_CTRL00, BIT(2),
-			      (value == V4L2_CID_POWER_LINE_FREQUENCY_50HZ) ?
-			      BIT(2) : 0);
+	return ov5640_modify(sensor, OV5640_REG_HZ5060_CTRL00, BIT(2),
+			     (value == V4L2_CID_POWER_LINE_FREQUENCY_50HZ) ?
+			     BIT(2) : 0);
 }
 
 static int ov5640_set_ctrl_hflip(struct ov5640_dev *sensor, int value)
@@ -2839,10 +2839,10 @@ static int ov5640_set_ctrl_hflip(struct ov5640_dev *sensor, int value)
 	 * - [2]:	ISP mirror
 	 * - [1]:	Sensor mirror
 	 */
-	return ov5640_mod_reg(sensor, OV5640_REG_TIMING_REG21,
-			      BIT(2) | BIT(1),
-			      (!(value ^ sensor->upside_down)) ?
-			      (BIT(2) | BIT(1)) : 0);
+	return ov5640_modify(sensor, OV5640_REG_TIMING_REG21,
+			     BIT(2) | BIT(1),
+			     (!(value ^ sensor->upside_down)) ?
+			     (BIT(2) | BIT(1)) : 0);
 }
 
 static int ov5640_set_ctrl_vflip(struct ov5640_dev *sensor, int value)
@@ -2854,10 +2854,10 @@ static int ov5640_set_ctrl_vflip(struct ov5640_dev *sensor, int value)
 	 * - [2]:	ISP vflip
 	 * - [1]:	Sensor vflip
 	 */
-	return ov5640_mod_reg(sensor, OV5640_REG_TIMING_REG20,
-			      BIT(2) | BIT(1),
-			      (value ^ sensor->upside_down) ?
-			      (BIT(2) | BIT(1)) : 0);
+	return ov5640_modify(sensor, OV5640_REG_TIMING_REG20,
+			     BIT(2) | BIT(1),
+			     (value ^ sensor->upside_down) ?
+			     (BIT(2) | BIT(1)) : 0);
 }
 
 static int ov5640_g_volatile_ctrl(struct v4l2_ctrl *ctrl)
