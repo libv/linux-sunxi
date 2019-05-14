@@ -914,6 +914,9 @@ static int ov5640_setup_720P_1280x720(struct ov5640_dev *sensor)
 
 /*
  * 1920x1080
+ *
+ * There are a lot of duplicate values in here, almost looks like a copy-paste
+ * accident. -- libv
  */
 static int ov5640_setup_1080P_1920x1080(struct ov5640_dev *sensor)
 {
